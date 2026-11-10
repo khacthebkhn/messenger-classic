@@ -1,0 +1,60 @@
+{
+  "name": "messenger-classic",
+  "productName": "Messenger Classic",
+  "version": "1.0.1",
+  "description": "Desktop Messenger with the late messenger.com look, without the rest of Facebook",
+  "main": "src/main.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --win --dir",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "app.messengerclassic.desktop",
+    "productName": "Messenger Classic",
+    "executableName": "MessengerClassic",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Messenger Classic"
+    },
+    "portable": {
+      "artifactName": "MessengerClassic-${version}-portable.exe"
+    },
+    "publish": null,
+    "asar": true
+  }
+}

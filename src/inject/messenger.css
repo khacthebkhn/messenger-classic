@@ -1,0 +1,22 @@
+/*
+ * Small style tweaks injected into facebook.com/messages.
+ *
+ * Facebook's top bar is NOT hidden with CSS. The app slides the page up so
+ * the bar sits underneath the app's own title bar, which keeps working even
+ * when Facebook renames its CSS classes. Put your own overrides in
+ * custom.css (sidebar avatar menu → "Edit custom CSS…") instead of here.
+ */
+
+/* Slim, quiet scrollbars like the old messenger.com. */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: rgba(134, 141, 151, 0.35);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: rgba(134, 141, 151, 0.6); }
+
+/* The page never needs its own outer scrollbar inside the app. */
+html, body { scrollbar-width: none; }

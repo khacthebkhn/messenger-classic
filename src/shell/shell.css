@@ -1,13 +1,21 @@
+/* Colors come from the current skin (see src/skins.js); shell.js sets them. */
 :root {
-  --surface: #ffffff;
-  --text: #050505;
-  --secondary: #65676b;
-  --icon: #65676b;
-  --hover: rgba(0, 0, 0, 0.05);
-  --active: rgba(0, 0, 0, 0.08);
-  --divider: #e4e6eb;
-  --accent: #0866ff;
-  --badge: #e41e3f;
+  --title-bg: #ffffff;
+  --title-fg: #65676b;
+  --title-pad: 0px;
+  --rail-bg: #ffffff;
+  --rail-ring: #ffffff;
+  --rail-fg: #65676b;
+  --rail-fg-active: #050505;
+  --rail-text: #050505;
+  --rail-hover: rgba(0, 0, 0, 0.05);
+  --rail-active: rgba(0, 0, 0, 0.08);
+  --rail-border: #e4e6eb;
+  --badge-bg: #e41e3f;
+  --badge-fg: #ffffff;
+  --brand: #0084ff;
+  --brand-dots: #0084ff;
+  --focus: #0866ff;
 }
 
 * { box-sizing: border-box; }
@@ -16,8 +24,7 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--surface);
-  color: var(--text);
+  background: transparent;
   font: 15px/1.3333 "Segoe UI Historic", "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
   user-select: none;
   -webkit-font-smoothing: antialiased;
@@ -26,21 +33,37 @@ html, body {
 body:not([data-part="title"]) .titlebar,
 body:not([data-part="rail"]) .rail { display: none; }
 
+body[data-skin="yahoo"] { font-family: Tahoma, Verdana, "Segoe UI", sans-serif; }
+
 /* ------------------------------------------------------------- title bar */
 .titlebar {
+  position: relative;
   height: 100vh;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
+  padding: 0 12px 0 calc(var(--title-pad) + 12px);
+  background: var(--title-bg);
   -webkit-app-region: drag;
+  transition: background 160ms ease;
 }
-.app-icon { width: 16px; height: 16px; flex: none; }
+/* Zalo: the blue sidebar runs up through the title bar. */
+.titlebar::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--title-pad);
+  background: var(--rail-bg);
+}
+.app-icon { position: relative; width: 16px; height: 16px; flex: none; }
+.app-icon .disc { fill: var(--brand); }
+.app-icon .dot { fill: var(--brand-dots); }
 .app-name {
+  position: relative;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: var(--secondary);
+  color: var(--title-fg);
 }
 
 /* ---------------------------------------------------------------- sidebar */
@@ -50,7 +73,8 @@ body:not([data-part="rail"]) .rail { display: none; }
   flex-direction: column;
   justify-content: space-between;
   padding: 8px 12px 12px;
-  border-right: 1px solid var(--divider);
+  background: var(--rail-bg);
+  border-right: 1px solid var(--rail-border);
 }
 .rail-top, .rail-bottom { display: flex; flex-direction: column; gap: 2px; }
 
@@ -62,14 +86,14 @@ body:not([data-part="rail"]) .rail { display: none; }
   height: 48px;
   padding: 0 0 0 4px;
   border-radius: 10px;
-  color: var(--text);
+  color: var(--rail-text);
   cursor: pointer;
   transition: background-color 120ms ease;
 }
-.item:hover { background: var(--hover); }
+.item:hover { background: var(--rail-hover); }
 .item:active { transform: scale(0.98); }
-.item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.item.active { background: var(--active); }
+.item:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.item.active { background: var(--rail-active); }
 
 .icon {
   position: relative;
@@ -84,14 +108,15 @@ body:not([data-part="rail"]) .rail { display: none; }
   width: 24px;
   height: 24px;
   fill: none;
-  stroke: var(--icon);
+  stroke: var(--rail-fg);
   stroke-width: 1.9;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .icon svg .dots { stroke-width: 2.6; }
-.item.active .icon svg { stroke: var(--text); }
-.item[data-route="chats"].active .icon svg path { fill: var(--text); }
+.icon svg .fill { fill: var(--rail-fg); stroke: none; }
+.item.active .icon svg { stroke: var(--rail-fg-active); }
+.item[data-route="chats"].active .icon svg path { fill: var(--rail-fg-active); }
 
 .badge {
   position: absolute;
@@ -101,13 +126,13 @@ body:not([data-part="rail"]) .rail { display: none; }
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: var(--badge);
-  color: #fff;
+  background: var(--badge-bg);
+  color: var(--badge-fg);
   font-size: 11px;
   font-weight: 700;
   line-height: 18px;
   text-align: center;
-  box-shadow: 0 0 0 2px var(--surface);
+  box-shadow: 0 0 0 2px var(--rail-ring);
 }
 
 .avatar img {
@@ -117,7 +142,7 @@ body:not([data-part="rail"]) .rail { display: none; }
   object-fit: cover;
 }
 .avatar img:not([hidden]) + .avatar-fallback { display: none; }
-.avatar-fallback { padding: 2px; border-radius: 50%; background: var(--hover); width: 36px !important; height: 36px !important; }
+.avatar-fallback { padding: 2px; border-radius: 50%; background: var(--rail-hover); width: 36px !important; height: 36px !important; }
 
 .label {
   font-size: 15px;

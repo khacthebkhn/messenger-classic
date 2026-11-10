@@ -4,13 +4,111 @@
 const { ipcRenderer, contextBridge, webFrame } = require('electron');
 
 // ---------------------------------------------------------------------------
-// Notifications: focus the app window when a notification is clicked, and
-// honour the app's "Desktop notifications" switch.
+// Settings from the app: notifications switch and the current skin.
 // ---------------------------------------------------------------------------
 let notificationsEnabled = true;
-ipcRenderer.on('mc:settings', (_e, s) => {
-  notificationsEnabled = Boolean(s && s.notifications);
-});
+let skin = 'messenger';
+
+function applySettings(s) {
+  if (!s) return;
+  notificationsEnabled = Boolean(s.notifications);
+  skin = s.skin || 'messenger';
+  syncSkin();
+}
+
+ipcRenderer.on('mc:settings', (_e, s) => applySettings(s));
+
+// ---------------------------------------------------------------------------
+// Skins. src/inject/skins.css keys off html[data-mc-skin]. The Yahoo and Zalo
+// skins are light looks. Facebook marks dark mode with __fb-dark-mode classes
+// on <html> and on many containers inside the page, so while a light skin is
+// on, every one of them is swapped for __fb-light-mode (tagged
+// data-mc-was-dark so it can be put back). Full-screen viewers stay dark.
+// ---------------------------------------------------------------------------
+const DARK = '__fb-dark-mode';
+const LIGHT = '__fb-light-mode';
+let skinObserver = null;
+
+function inFullScreenOverlay(el) {
+  const d = el.closest('[role="dialog"], [aria-modal="true"]');
+  if (!d) return false;
+  const r = d.getBoundingClientRect();
+  return r.width >= innerWidth * 0.9 && r.height >= innerHeight * 0.9;
+}
+
+function forceLight(el) {
+  if (!el.classList.contains(DARK) || inFullScreenOverlay(el)) return;
+  el.classList.replace(DARK, LIGHT);
+  el.setAttribute('data-mc-was-dark', '');
+}
+
+function restoreDark(el) {
+  el.classList.replace(LIGHT, DARK);
+  el.removeAttribute('data-mc-was-dark');
+}
+
+function onSkinMutations(records) {
+  if (skin === 'messenger') return;
+  let added = false;
+  for (const r of records) {
+    if (r.type === 'attributes') {
+      forceLight(r.target);
+    } else {
+      for (const n of r.addedNodes) {
+        if (n.nodeType !== 1) continue;
+        added = true;
+        forceLight(n);
+        for (const el of n.querySelectorAll('.' + DARK)) forceLight(el);
+      }
+    }
+  }
+  if (added) scheduleReport(); // marks chat wallpapers soon after they appear
+}
+
+function syncSkin() {
+  const html = document.documentElement;
+  if (!html) return;
+  if (html.dataset.mcSkin !== skin) html.dataset.mcSkin = skin;
+
+  if (skin === 'messenger') {
+    skinObserver?.disconnect();
+    skinObserver = null;
+    for (const el of document.querySelectorAll('[data-mc-was-dark]')) restoreDark(el);
+    return;
+  }
+  forceLight(html);
+  for (const el of document.querySelectorAll('.' + DARK)) forceLight(el);
+  if (!skinObserver) {
+    skinObserver = new MutationObserver(onSkinMutations);
+    skinObserver.observe(html, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+  }
+}
+
+// Viewers get laid out after they're inserted; put them back to dark once
+// they turn out to be full-screen.
+function keepViewersDark() {
+  if (skin === 'messenger') return;
+  for (const el of document.querySelectorAll('[data-mc-was-dark]')) {
+    if (inFullScreenOverlay(el)) restoreDark(el);
+  }
+}
+
+// A chat theme's wallpaper is an inline background image on one big element.
+function markWallpapers() {
+  const main = document.querySelector('[role="main"]');
+  if (!main) return;
+  const mr = main.getBoundingClientRect();
+  for (const n of main.querySelectorAll('[style*="background"]')) {
+    if (n.hasAttribute('data-mc-wallpaper') || !(n.style.backgroundImage || n.style.background)) continue;
+    const r = n.getBoundingClientRect();
+    if (r.width >= mr.width * 0.5 && r.height >= mr.height * 0.4) n.setAttribute('data-mc-wallpaper', '');
+  }
+}
+
+try {
+  applySettings(ipcRenderer.sendSync('fb:get-settings'));
+} catch {}
+document.addEventListener('readystatechange', syncSkin);
 
 contextBridge.exposeInMainWorld('__messengerClassic', {
   notificationClicked: () => ipcRenderer.send('fb:notification-click'),
@@ -185,6 +283,8 @@ let lastAvatar;
 
 function report() {
   if (!document.body) return;
+  markWallpapers();
+  keepViewersDark();
   const banner = findBanner();
   const pageReady = Boolean(document.querySelector('[role="main"]'));
   let bannerHeight = null;
@@ -203,7 +303,9 @@ function report() {
   const covered = metrics.overlay || [...document.querySelectorAll('[role="dialog"], [aria-modal="true"]')]
     .some((d) => { const r = d.getBoundingClientRect(); return r.width > 120 && r.height > 60; });
   const y = (banner ? banner.rect.bottom : 0) + 24;
-  const surface = covered ? null : opaqueBackgroundAt(24, Math.min(y, innerHeight - 1));
+  // Under the Yahoo/Zalo skins the page colors are ours, not Facebook's, so
+  // keep the last Facebook palette for when the Messenger skin comes back.
+  const surface = covered || skin !== 'messenger' ? null : opaqueBackgroundAt(24, Math.min(y, innerHeight - 1));
   if (surface) {
     const dark = luminance(surface) < 0.45;
     const text = parseColor(cssVar('--primary-text')) || parseColor(getComputedStyle(document.body).color);

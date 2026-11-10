@@ -5,17 +5,33 @@ document.body.dataset.part = part;
 const $ = (sel) => document.querySelector(sel);
 let lastBadge = -1;
 
+const TOKENS = {
+  titleBg: '--title-bg',
+  titleFg: '--title-fg',
+  railBg: '--rail-bg',
+  railRing: '--rail-ring',
+  railFg: '--rail-fg',
+  railFgActive: '--rail-fg-active',
+  railText: '--rail-text',
+  railHover: '--rail-hover',
+  railActive: '--rail-active',
+  railBorder: '--rail-border',
+  badgeBg: '--badge-bg',
+  badgeFg: '--badge-fg',
+  brand: '--brand',
+  brandDots: '--brand-dots',
+};
+
 function applyState(s) {
   if (!s) return;
-  const p = s.palette || {};
+  const t = s.shell || {};
   const root = document.documentElement.style;
-  for (const [key, value] of Object.entries({
-    surface: p.surface, text: p.text, secondary: p.secondary, icon: p.icon,
-    hover: p.hover, active: p.active, divider: p.divider, accent: p.accent,
-  })) {
-    if (value) root.setProperty(`--${key}`, value);
+  for (const [key, prop] of Object.entries(TOKENS)) {
+    if (t[key]) root.setProperty(prop, t[key]);
   }
-  document.body.classList.toggle('dark', Boolean(p.dark));
+  root.setProperty('--title-pad', t.joinRail ? `${s.railWidth || 0}px` : '0px');
+  document.body.dataset.skin = s.skin || 'messenger';
+  document.body.classList.toggle('dark', Boolean(t.dark));
   document.body.classList.toggle('collapsed', Boolean(s.collapsed));
 
   if (part === 'rail') renderRail(s);
@@ -64,10 +80,12 @@ if (part === 'rail') {
   for (const btn of document.querySelectorAll('.item[data-route]')) {
     btn.addEventListener('click', () => window.shell.navigate(btn.dataset.route));
   }
-  $('#settings').addEventListener('click', (e) => {
+  const menuAt = (fn) => (e) => {
     const r = e.currentTarget.getBoundingClientRect();
-    window.shell.openMenu(r.right + 4, r.top);
-  });
+    fn(r.right + 4, r.top);
+  };
+  $('#theme').addEventListener('click', menuAt(window.shell.openThemeMenu));
+  $('#settings').addEventListener('click', menuAt(window.shell.openMenu));
   $('#collapse').addEventListener('click', () => window.shell.toggleRail());
   $('.avatar img').addEventListener('error', (e) => { e.target.hidden = true; });
 }

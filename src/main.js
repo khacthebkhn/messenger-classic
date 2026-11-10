@@ -6,6 +6,7 @@ const {
 const path = require('node:path');
 const fs = require('node:fs');
 const store = require('./store');
+const { SKINS, messengerShell, skinOf } = require('./skins');
 
 // ---------------------------------------------------------------------------
 // Config
@@ -45,6 +46,7 @@ const ICON = path.join(ASSETS, process.platform === 'win32' ? 'icon.ico' : 'icon
 const SHELL_HTML = path.join(__dirname, 'shell', 'shell.html');
 const OFFLINE_HTML = path.join(__dirname, 'shell', 'offline.html');
 const BASE_CSS = path.join(__dirname, 'inject', 'messenger.css');
+const SKINS_CSS = path.join(__dirname, 'inject', 'skins.css');
 
 const PALETTES = {
   light: {
@@ -100,7 +102,7 @@ function chromeUserAgent() {
 }
 
 async function init() {
-  nativeTheme.themeSource = store.get('theme');
+  nativeTheme.themeSource = effectiveThemeSource();
   Menu.setApplicationMenu(null);
 
   const ses = session.fromPartition(PARTITION);
@@ -202,8 +204,23 @@ function palette() {
   return fbPalette || (nativeTheme.shouldUseDarkColors ? PALETTES.dark : PALETTES.light);
 }
 
+function currentSkin() {
+  return skinOf(store.get('skin'));
+}
+
+// Colors for the title bar and sidebar under the current skin.
+function shellTheme() {
+  const skin = SKINS[currentSkin()];
+  return skin.shell || messengerShell(palette());
+}
+
+// Yahoo and Zalo are light-only looks, so they pin the app to light mode.
+function effectiveThemeSource() {
+  return SKINS[currentSkin()].lightOnly ? 'light' : store.get('theme');
+}
+
 function createWindow() {
-  const p = palette();
+  const t = shellTheme();
   const bounds = validBounds(store.get('bounds')) || { width: 1200, height: 800 };
 
   win = new BaseWindow({
@@ -213,9 +230,9 @@ function createWindow() {
     title: 'Messenger',
     icon: ICON,
     show: false,
-    backgroundColor: p.surface,
+    backgroundColor: t.windowBg,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: p.surface, symbolColor: p.text, height: TITLE_H },
+    titleBarOverlay: { color: t.overlay, symbolColor: t.overlaySymbol, height: TITLE_H },
   });
 
   const shellPrefs = {
@@ -240,7 +257,7 @@ function createWindow() {
   win.contentView.addChildView(railView);
   win.contentView.addChildView(fbView);
   win.contentView.addChildView(titleView);
-  for (const v of [railView, fbView, titleView]) v.setBackgroundColor(p.surface);
+  for (const v of [railView, fbView, titleView]) v.setBackgroundColor(t.windowBg);
 
   railView.webContents.loadFile(SHELL_HTML, { query: { part: 'rail' } });
   titleView.webContents.loadFile(SHELL_HTML, { query: { part: 'title' } });
@@ -490,7 +507,7 @@ async function injectCss(wc) {
   if (wc.isDestroyed()) return;
   for (const key of cssKeys) wc.removeInsertedCSS(key).catch(() => {});
   cssKeys = [];
-  for (const file of [BASE_CSS, customCssPath()]) {
+  for (const file of [BASE_CSS, SKINS_CSS, customCssPath()]) {
     try {
       const css = fs.readFileSync(file, 'utf8');
       if (css.trim()) cssKeys.push(await wc.insertCSS(css, { cssOrigin: 'user' }));
@@ -643,12 +660,20 @@ function handleShortcut(e, input) {
 // Settings
 // ---------------------------------------------------------------------------
 function settingsTemplate() {
-  const themeItem = (value, label) => ({
-    label, type: 'radio', checked: store.get('theme') === value, click: () => setTheme(value),
+  const lightOnly = SKINS[currentSkin()].lightOnly;
+  const modeItem = (value, label) => ({
+    label, type: 'radio', enabled: !lightOnly, checked: store.get('theme') === value, click: () => setTheme(value),
   });
   return [
-    { label: 'Theme', submenu: [themeItem('system', 'Use system setting'), themeItem('light', 'Light'), themeItem('dark', 'Dark')] },
-    { label: 'Show sidebar', type: 'checkbox', checked: store.get('showRail'), click: (i) => { store.set('showRail', i.checked); layout(); } },
+    { label: 'Theme', submenu: themeMenuTemplate() },
+    {
+      label: 'Color mode',
+      submenu: [
+        modeItem('system', 'Use system setting'), modeItem('light', 'Light'), modeItem('dark', 'Dark'),
+        ...(lightOnly ? [{ type: 'separator' }, { label: `${SKINS[currentSkin()].label} theme is light only`, enabled: false }] : []),
+      ],
+    },
+    { label: 'Show sidebar', type: 'checkbox', checked: store.get('showRail'), click: (i) => { store.set('showRail', i.checked); layout(); pushShellState(); } },
     { label: 'Show Facebook bar', type: 'checkbox', checked: !store.get('hideFacebookBar'), accelerator: 'CmdOrCtrl+Shift+B', click: toggleFacebookBar },
     { type: 'separator' },
     { label: 'Desktop notifications', type: 'checkbox', checked: store.get('notifications'), click: (i) => { store.set('notifications', i.checked); sendFbSettings(); } },
@@ -674,6 +699,27 @@ function settingsTemplate() {
   ];
 }
 
+function themeMenuTemplate() {
+  return Object.entries(SKINS).map(([key, skin]) => ({
+    label: skin.label, type: 'radio', checked: currentSkin() === key, click: () => setSkin(key),
+  }));
+}
+
+function popupThemeMenu(pos) {
+  if (!win) return;
+  const opts = { window: win };
+  if (pos) Object.assign(opts, { x: Math.round(pos.x), y: Math.round(TITLE_H + pos.y) });
+  Menu.buildFromTemplate(themeMenuTemplate()).popup(opts);
+}
+
+function setSkin(value) {
+  const skin = skinOf(value);
+  store.set('skin', skin);
+  nativeTheme.themeSource = effectiveThemeSource();
+  sendFbSettings();
+  applyPalette();
+}
+
 function popupSettings(pos) {
   if (!win) return;
   const menu = Menu.buildFromTemplate(settingsTemplate());
@@ -689,7 +735,8 @@ function toggleFacebookBar() {
 
 function setTheme(value) {
   store.set('theme', value);
-  nativeTheme.themeSource = value;
+  nativeTheme.themeSource = effectiveThemeSource();
+  if (currentSkin() !== 'messenger') return;
   // Facebook decides its own colors. If its Dark mode isn't set to
   // "Automatic", it won't follow us; explain once how to fix that.
   setTimeout(() => {
@@ -720,8 +767,12 @@ function setLaunchAtLogin(enabled) {
   updateTray();
 }
 
+function fbSettings() {
+  return { notifications: Boolean(store.get('notifications')), skin: currentSkin() };
+}
+
 function sendFbSettings() {
-  fbView?.webContents.send('mc:settings', { notifications: store.get('notifications') });
+  fbView?.webContents.send('mc:settings', fbSettings());
 }
 
 async function logOut() {
@@ -750,18 +801,20 @@ async function logOut() {
 // ---------------------------------------------------------------------------
 function applyPalette() {
   if (!win) return;
-  const p = palette();
+  const t = shellTheme();
   try {
-    win.setTitleBarOverlay({ color: p.surface, symbolColor: p.text, height: TITLE_H });
+    win.setTitleBarOverlay({ color: t.overlay, symbolColor: t.overlaySymbol, height: TITLE_H });
   } catch {}
-  win.setBackgroundColor(p.surface);
-  for (const v of [railView, titleView]) v?.setBackgroundColor(p.surface);
+  win.setBackgroundColor(t.windowBg);
+  for (const v of [railView, titleView]) v?.setBackgroundColor(t.windowBg);
   pushShellState();
 }
 
 function shellState() {
   return {
-    palette: palette(),
+    skin: currentSkin(),
+    shell: shellTheme(),
+    railWidth: railWidth(),
     active: activeRoute,
     unread,
     avatar,
@@ -809,6 +862,9 @@ function fromFbView(e) {
 }
 
 function registerIpc() {
+  ipcMain.on('fb:get-settings', (e) => {
+    e.returnValue = fbSettings();
+  });
   ipcMain.on('fb:classify', (e, url) => {
     e.returnValue = classify(url);
   });
@@ -849,6 +905,7 @@ function registerIpc() {
   ipcMain.handle('shell:get-state', () => shellState());
   ipcMain.on('shell:navigate', (_e, route) => goTo(route));
   ipcMain.on('shell:menu', (_e, pos) => popupSettings(pos));
+  ipcMain.on('shell:theme-menu', (_e, pos) => popupThemeMenu(pos));
   ipcMain.on('shell:toggle-rail', () => {
     store.set('railCollapsed', !store.get('railCollapsed'));
     layout();

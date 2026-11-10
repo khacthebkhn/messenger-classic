@@ -1,0 +1,185 @@
+/*
+ * Yahoo and Zalo skins for facebook.com/messages.
+ *
+ * Facebook's class names change all the time, but its colors come from CSS
+ * variables (--surface-background, --chat-outgoing-message-bubble-background-color,
+ * ...). These rules only override those variables, so they keep working when
+ * Facebook ships new markup. The app puts data-mc-skin on <html> and, while a
+ * skin is on, swaps Facebook's __fb-dark-mode classes (it nests them all over
+ * the page) for __fb-light-mode, so every other variable has its light value.
+ *
+ * Chat themes (gradients, wallpapers) set their own variables inline on
+ * elements inside [role="main"], so the chat variables are repeated there.
+ * This file is injected as a user stylesheet, and user !important beats
+ * Facebook's inline styles.
+ */
+
+/* =========================================================== Zalo ======== */
+html[data-mc-skin="zalo"],
+html[data-mc-skin="zalo"] .__fb-light-mode {
+  --surface-background: #ffffff !important;
+  --card-background: #ffffff !important;
+  --card-background-flat: #f3f5f6 !important;
+  --messenger-card-background: #ffffff !important;
+  --popover-background: #ffffff !important;
+  --popover-card-background: #ffffff !important;
+  --nav-bar-background: #ffffff !important;
+  --web-wash: #eef0f1 !important;
+  --wash: #eef0f1 !important;
+
+  --primary-text: #081c36 !important;
+  --secondary-text: #7589a3 !important;
+  --placeholder-text: #7589a3 !important;
+  --primary-icon: #081c36 !important;
+  --secondary-icon: #7589a3 !important;
+  --placeholder-icon: #7589a3 !important;
+
+  --accent: #0068ff !important;
+  --primary-button-background: #0068ff !important;
+  --buttonSendBackgroundColor: #0068ff !important;
+  --blue-link: #0068ff !important;
+  --cursor: #0068ff !important;
+  --focus-ring-blue: #0068ff !important;
+  --badge-background-color-blue: #0068ff !important;
+  --radio-checked-icon-color: #0068ff !important;
+  --radio-border-color-selected: #0068ff !important;
+  --toggle-active-background: #0068ff !important;
+  --notification-badge: #f23030 !important;
+
+  --hover-overlay: rgba(8, 28, 54, 0.05) !important;
+  --hosted-view-selected-state: #e5efff !important;
+  --divider: #dfe2e7 !important;
+  --comment-background: #eaedf0 !important;
+  --input-background: #ffffff !important;
+  --highlight-bg: rgba(0, 104, 255, 0.2) !important;
+  --text-highlight: rgba(0, 104, 255, 0.25) !important;
+  --messenger-reply-background: #f3f5f6 !important;
+  --chat-replied-message-background-color: rgba(0, 104, 255, 0.08) !important;
+
+  --chat-bubble-border-radius: 8px !important;
+}
+
+html[data-mc-skin="zalo"],
+html[data-mc-skin="zalo"] [role="main"],
+html[data-mc-skin="zalo"] [role="main"] * {
+  --mwp-primary-theme-color: #0068ff !important;
+  --mwp-header-button-color: #0068ff !important;
+  --mwp-message-row-background: #e2e9f1 !important;
+  --mwp-reply-background-color: #f3f5f6 !important;
+  --chat-outgoing-message-bubble-background-color: #e5efff !important;
+  --chat-outgoing-message-background-gradient: linear-gradient(#e2e9f1, #e2e9f1) !important;
+  --chat-message-text-color: #081c36 !important;
+  --bubbleContentUserBackgroundColor: #e5efff !important;
+  --bubbleContentUserColor: #081c36 !important;
+  --chat-incoming-message-bubble-background-color: #ffffff !important;
+  --chat-incoming-message-text-color: #081c36 !important;
+  --chat-composer-background-color: #ffffff !important;
+  --chat-composer-input-background-color: #f3f5f6 !important;
+  --chat-composer-button-color: #0068ff !important;
+  --chat-composer-caret-color: #0068ff !important;
+  --chat-edit-message-overlay-color: #ffffff !important;
+  --reaction-pill-multireact-selected-color: #e5efff !important;
+  --reaction-pill-background-color: #ffffff !important;
+  --mwp-header-background-color: #ffffff !important;
+  --mwp-header-text-color: #081c36 !important;
+  --mwp-subheader-text-color: #7589a3 !important;
+  --chat-admin-text-color: #7589a3 !important;
+  --chat-replied-message-background-color: rgba(0, 104, 255, 0.08) !important;
+  --chat-scrollbar-thumb-color: rgba(8, 28, 54, 0.25) !important;
+  --chat-scrollbar-track-color: transparent !important;
+  --text-highlight: rgba(0, 104, 255, 0.25) !important;
+}
+
+/* ========================================================== Yahoo ======== */
+html[data-mc-skin="yahoo"],
+html[data-mc-skin="yahoo"] .__fb-light-mode {
+  --surface-background: #ffffff !important;
+  --card-background: #ffffff !important;
+  --card-background-flat: #f6f2fd !important;
+  --messenger-card-background: #ffffff !important;
+  --popover-background: #ffffff !important;
+  --popover-card-background: #ffffff !important;
+  --nav-bar-background: #ffffff !important;
+  --web-wash: #f4f0fa !important;
+  --wash: #f4f0fa !important;
+
+  --primary-text: #1a1a1a !important;
+  --secondary-text: #6b6587 !important;
+  --placeholder-text: #8a84a3 !important;
+  --primary-icon: #400090 !important;
+  --secondary-icon: #6b6587 !important;
+  --placeholder-icon: #8a84a3 !important;
+
+  --accent: #6001d2 !important;
+  --primary-button-background: #6001d2 !important;
+  --buttonSendBackgroundColor: #6001d2 !important;
+  --blue-link: #400090 !important;
+  --cursor: #6001d2 !important;
+  --focus-ring-blue: #6001d2 !important;
+  --badge-background-color-blue: #6001d2 !important;
+  --radio-checked-icon-color: #6001d2 !important;
+  --radio-border-color-selected: #6001d2 !important;
+  --toggle-active-background: #6001d2 !important;
+  --notification-badge: #e0004d !important;
+
+  --hover-overlay: rgba(96, 1, 210, 0.06) !important;
+  --hosted-view-selected-state: #efe6fc !important;
+  --divider: #e3dcef !important;
+  --comment-background: #f3eefc !important;
+  --input-background: #ffffff !important;
+  --highlight-bg: rgba(255, 212, 0, 0.45) !important;
+  --text-highlight: rgba(255, 212, 0, 0.5) !important;
+  --messenger-reply-background: #f6f2fd !important;
+  --chat-replied-message-background-color: rgba(96, 1, 210, 0.08) !important;
+
+  --chat-bubble-border-radius: 4px !important;
+
+  --font-family-default: Tahoma, Verdana, "Segoe UI", sans-serif !important;
+  --font-family-segoe: Tahoma, Verdana, "Segoe UI", sans-serif !important;
+}
+
+html[data-mc-skin="yahoo"],
+html[data-mc-skin="yahoo"] [role="main"],
+html[data-mc-skin="yahoo"] [role="main"] * {
+  --mwp-primary-theme-color: #6001d2 !important;
+  --mwp-header-button-color: #6001d2 !important;
+  --mwp-message-row-background: #ffffff !important;
+  --mwp-reply-background-color: #f6f2fd !important;
+  --chat-outgoing-message-bubble-background-color: #ece3fb !important;
+  --chat-outgoing-message-background-gradient: linear-gradient(#ffffff, #ffffff) !important;
+  --chat-message-text-color: #2b0a57 !important;
+  --bubbleContentUserBackgroundColor: #ece3fb !important;
+  --bubbleContentUserColor: #2b0a57 !important;
+  --chat-incoming-message-bubble-background-color: #f2f2f4 !important;
+  --chat-incoming-message-text-color: #1a1a1a !important;
+  --chat-composer-background-color: #f7f3fd !important;
+  --chat-composer-input-background-color: #ffffff !important;
+  --chat-composer-button-color: #6001d2 !important;
+  --chat-composer-caret-color: #6001d2 !important;
+  --chat-edit-message-overlay-color: #ffffff !important;
+  --reaction-pill-multireact-selected-color: #efe6fc !important;
+  --reaction-pill-background-color: #ffffff !important;
+  --mwp-header-background-color: #f7f3fd !important;
+  --mwp-header-text-color: #2b0a57 !important;
+  --mwp-subheader-text-color: #6b6587 !important;
+  --chat-admin-text-color: #6b6587 !important;
+  --chat-replied-message-background-color: rgba(96, 1, 210, 0.08) !important;
+  --chat-scrollbar-thumb-color: rgba(64, 0, 144, 0.3) !important;
+  --chat-scrollbar-track-color: transparent !important;
+  --text-highlight: rgba(255, 212, 0, 0.5) !important;
+}
+
+/* Classic Yahoo! Messenger type: Tahoma everywhere (emoji still fall back). */
+html[data-mc-skin="yahoo"] body,
+html[data-mc-skin="yahoo"] body * {
+  font-family: Tahoma, Verdana, "Segoe UI Historic", "Segoe UI", "Segoe UI Emoji", sans-serif !important;
+}
+
+/* ================================================= both light skins ======= */
+/* A chat theme's wallpaper is an inline background image on one large element
+   (the app marks it with data-mc-wallpaper); flatten it to the skin's color. */
+html[data-mc-skin="zalo"] [data-mc-wallpaper],
+html[data-mc-skin="yahoo"] [data-mc-wallpaper] {
+  background-image: none !important;
+  background-color: var(--mwp-message-row-background) !important;
+}

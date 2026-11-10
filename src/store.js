@@ -5,7 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const DEFAULTS = {
-  theme: 'system', // 'system' | 'light' | 'dark'
+  theme: 'system', // color mode: 'system' | 'light' | 'dark'
+  skin: 'messenger', // 'messenger' | 'yahoo' | 'zalo'
   hideFacebookBar: true,
   notifications: true,
   closeToTray: true,

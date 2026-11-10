@@ -11,13 +11,14 @@ affiliated with Meta.
 
 ## Install
 
-| File | Use it when |
-| --- | --- |
-| `Messenger Classic Setup 1.0.0.exe` | You want the normal install. This version also gets desktop notifications. |
-| `MessengerClassic-1.0.0-portable.exe` | You want one file and no install. Notifications might not appear. |
+Download `MessengerClassic-Setup-<version>.exe` from the repo's Releases page
+and run it. Installing over an older version keeps your login and settings.
 
 The builds aren't code-signed, so Windows SmartScreen will warn you the first
 time. Click **More info → Run anyway**.
+
+`npm run dist` also builds a single-file portable `.exe`, but Windows may not
+show its notifications because it has no Start menu shortcut.
 
 ## What you get
 
@@ -31,8 +32,10 @@ time. Click **More info → Run anyway**.
 - A tray icon, an unread count on the taskbar, a flashing taskbar button for
   new messages, and Windows notifications. Click a notification to jump to
   the chat.
-- The title bar and sidebar take their colors from Facebook's page, so light
-  and dark mode always match.
+- Three themes: **Messenger**, **Yahoo** and **Zalo**. Pick one with the
+  palette button in the sidebar, or under Preferences → Theme.
+- With the Messenger theme, the title bar and sidebar take their colors from
+  Facebook's page, so light and dark mode always match.
 - Video and voice calls, including screen sharing (you pick a screen or
   window).
 - A spell-check right-click menu, image copy and save, and zoom.
@@ -55,10 +58,28 @@ time. Click **More info → Run anyway**.
 | Alt+Left | Back |
 | F12 | Developer tools |
 
+## Themes
+
+| Theme | Look |
+| --- | --- |
+| Messenger | Facebook's own colors, in light or dark mode, including each chat's theme |
+| Yahoo | Purple title bar and sidebar with yellow highlights, Tahoma text, square-cornered bubbles on white |
+| Zalo | Blue sidebar, white panels, light-blue selected chat and your own bubbles, gray-blue chat background |
+
+Yahoo and Zalo are light-only themes. While one is on, the app turns
+Facebook's page light and replaces each chat's own theme (gradients and
+wallpapers) with the Yahoo or Zalo colors. Switch back to Messenger to get
+them back.
+
+The themes only change Facebook's color variables, so they keep working when
+Facebook renames its CSS classes. The colors are in `src/skins.js` (title bar
+and sidebar) and `src/inject/skins.css` (the Messenger page).
+
 ## Dark mode
 
-Facebook picks its own colors. To let the app's **Theme** setting (and
-Windows) control them, set Facebook's dark mode to Automatic once:
+This applies to the Messenger theme. Facebook picks its own colors. To let
+the app's **Color mode** setting (and Windows) control them, set Facebook's
+dark mode to Automatic once:
 
 1. Press Ctrl+Shift+B.
 2. Open your profile picture → Display & accessibility.
@@ -103,6 +124,7 @@ MESSENGER_URL=http://localhost:8123/messages/ MC_DEBUG=1 npm start
   clicks to the browser when needed, and connects notification clicks to the
   window. It doesn't read your messages.
 - `src/shell/` holds the title bar and sidebar.
+- `src/skins.js` and `src/inject/skins.css` define the themes.
 - `src/inject/messenger.css` holds small style tweaks. Your `custom.css` is
   saved in `%APPDATA%\Messenger Classic\`.
 

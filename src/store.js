@@ -14,8 +14,11 @@ const DEFAULTS = {
   showRail: true,
   railCollapsed: true,
   lastBanner: null,
-  avatar: null,
+  avatar: null, // 1.1 single-account fields, migrated into `accounts`
   avatarUser: null,
+  accounts: null, // [{ id, partition, userId, name, avatar }]
+  activeAccount: null,
+  keepAccountsRunning: true,
   zoom: 1,
   bounds: null,
   maximized: false,

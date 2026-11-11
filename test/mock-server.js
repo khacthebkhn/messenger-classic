@@ -9,7 +9,26 @@ const PORT = Number(process.env.PORT || 8123);
 
 const chats = ['Linh Tran', 'Minh Nguyen', 'Design team', 'Bao Pham', 'Ha Vu', 'Quang Le', 'Mai Do'];
 
-function page(path, query) {
+// Mock Facebook accounts. Run with MOCK_LOGIN=1 to get a login page (for
+// testing multiple accounts); otherwise everyone is logged in as 1000.
+const USERS = {
+  1000: { name: 'Alex Morgan', unread: 3, color: '#f5a623' },
+  1001: { name: 'Linh Tran', unread: 1, color: '#10b981' },
+  1002: { name: 'Bao Pham', unread: 0, color: '#ef4444' },
+};
+
+function loginPage() {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Facebook – log in or sign up</title>
+<style>body{font:15px system-ui;background:#f0f2f5;display:grid;place-items:center;height:100vh;margin:0}
+.card{background:#fff;padding:24px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.15);width:320px}
+a{display:block;margin:8px 0;padding:10px;border-radius:6px;background:#0866ff;color:#fff;text-align:center;text-decoration:none;font-weight:600}</style></head>
+<body><div class="card"><h2>Log in to Facebook</h2>
+${Object.entries(USERS).map(([id, u]) => `<a id="login-${id}" href="/login/submit?u=${id}">Log in as ${u.name}</a>`).join('')}
+</div></body></html>`;
+}
+
+function page(path, query, uid = '1000') {
+  const user = USERS[uid] || USERS[1000];
   const thread = (/\/t\/(\d+)/.exec(path) || [, '0'])[1];
   const name = chats[Number(thread)] || chats[0];
   const mode = query.has('dark') ? '__fb-dark-mode' : '__fb-light-mode';
@@ -28,7 +47,7 @@ function page(path, query) {
 <html class="${mode}">
 <head>
 <meta charset="utf-8">
-<title>(3) Messenger | Facebook</title>
+<title>${user.unread ? `(${user.unread}) ` : ''}Messenger | Facebook</title>
 <style>
   /* Variable names and scoping copied from facebook.com/messages. */
   :root, .__fb-light-mode:root, .__fb-light-mode { --surface-background:#fff; --messenger-card-background:#fff; --web-wash:#f0f2f5; --primary-text:#080809; --secondary-text:#65686c;
@@ -73,7 +92,7 @@ function page(path, query) {
 </head>
 <body>
 <div role="banner"><div class="fbbar"><span>facebook (top bar that should be hidden)</span>
-  <div role="navigation" aria-label="Account Controls and Settings"><svg id="me" width="40" height="40" aria-label="Your profile"><image href="/avatar/me.svg" width="40" height="40"/></svg></div></div>
+  <div role="navigation" aria-label="Account Controls and Settings"><svg id="me" width="40" height="40" aria-label="Your profile"><image href="/avatar/me.svg?u=${uid}" width="40" height="40"/></svg></div></div>
   <!-- Facebook draws pop-ups (notifications...) inside the banner element, below the bar. -->
   <div id="popover" style="position:fixed; top:60px; right:16px; width:340px; padding:8px; background:var(--surface-background); box-shadow:0 4px 16px rgba(0,0,0,.25); border-radius:8px; z-index:4; display:${query.has('popover') ? 'block' : 'none'}">
     ${['Ana', 'Ben', 'Chi'].map((n) => `<div style="display:flex;gap:8px;align-items:center;padding:6px"><svg width="40" height="40"><image href="/avatar/other.svg?${n}" width="40" height="40"/></svg>${n} commented</div>`).join('')}
@@ -100,6 +119,7 @@ function page(path, query) {
 </div>
 <div class="viewer __fb-dark-mode" id="viewer" role="dialog"><button id="closeViewer">✕ Close viewer</button></div>
 <div class="dialog-backdrop" id="backdrop"><div role="dialog" style="background:var(--surface-background);padding:60px 120px;border-radius:8px">A modal dialog</div></div>
+<script type="application/json" data-sjs>{"require":[["ScheduledServerJS","handle",null,[{"define":[["CurrentUserInitialData",[],{"ACCOUNT_ID":"${uid}","USER_ID":"${uid}","NAME":${JSON.stringify(user.name)},"SHORT_NAME":${JSON.stringify(user.name.split(' ')[0])},"IS_MESSENGER_ONLY_USER":false},270]]}]]]}</script>
 <script>
   // SPA routing between threads, like Facebook's router.
   document.addEventListener('click', (e) => {
@@ -107,7 +127,7 @@ function page(path, query) {
     if (!a) return;
     e.preventDefault();
     history.pushState({}, '', a.getAttribute('href'));
-    document.title = '(3) Messenger | Facebook';
+    document.title = ${JSON.stringify((user.unread ? `(${user.unread}) ` : '') + 'Messenger | Facebook')};
     document.querySelectorAll('.row').forEach((r) => r.classList.toggle('sel', r === a));
   });
   photo.onclick = () => { viewer.classList.add('open'); history.pushState({}, '', '/messenger_media/?attachment_id=1'); };
@@ -148,12 +168,23 @@ http.createServer((req, res) => {
       return res.end();
     }
     res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'no-store' });
-    return res.end(face(url.pathname.startsWith('/avatar/me') ? '#f5a623' : '#3b82f6'));
+    const who = USERS[url.searchParams.get('u')] || USERS[1000];
+    return res.end(face(url.pathname.startsWith('/avatar/me') ? who.color : '#3b82f6'));
   }
   if (url.pathname === '/' || url.pathname === '/home.php') {
     res.writeHead(200, { 'content-type': 'text/html' });
     return res.end('<!doctype html><title>Facebook</title><h1>HOME FEED (app should never stay here)</h1>');
   }
-  res.writeHead(200, { 'content-type': 'text/html', 'set-cookie': 'c_user=1000; Path=/; Max-Age=86400' });
-  res.end(page(url.pathname, url.searchParams));
+  const cookie = /(?:^|;\s*)c_user=(\d+)/.exec(req.headers.cookie || '');
+  if (url.pathname === '/login/submit') {
+    res.writeHead(302, { location: '/messages/', 'set-cookie': `c_user=${url.searchParams.get('u')}; Path=/; Max-Age=86400` });
+    return res.end();
+  }
+  if (!cookie && process.env.MOCK_LOGIN) {
+    res.writeHead(200, { 'content-type': 'text/html' });
+    return res.end(loginPage());
+  }
+  const uid = cookie ? cookie[1] : '1000';
+  res.writeHead(200, { 'content-type': 'text/html', 'set-cookie': `c_user=${uid}; Path=/; Max-Age=86400` });
+  res.end(page(url.pathname, url.searchParams, uid));
 }).listen(PORT, () => console.log(`mock facebook on http://localhost:${PORT}/messages/`));

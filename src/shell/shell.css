@@ -135,6 +135,18 @@ body[data-skin="yahoo"] { font-family: Tahoma, Verdana, "Segoe UI", sans-serif; 
   box-shadow: 0 0 0 2px var(--rail-ring);
 }
 
+/* Unread messages in your other accounts. */
+.other-unread {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--badge-bg);
+  box-shadow: 0 0 0 2px var(--rail-ring);
+}
+
 .avatar img {
   width: 36px;
   height: 36px;

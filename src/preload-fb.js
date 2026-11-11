@@ -342,12 +342,41 @@ function report() {
     }
   }
 
+  reportAccount();
+
   // Only report a picture we actually found; a missing one (page still
   // loading, bar re-rendering) must not wipe out the last good one.
   const av = findAvatar(banner);
   if (av && av !== lastAvatar) {
     lastAvatar = av;
     ipcRenderer.send('fb:avatar', av);
+  }
+}
+
+// Who is logged in on this page: Facebook embeds it as JSON
+// (CurrentUserInitialData: USER_ID, NAME). Used to label accounts.
+let lastAccount = '';
+function reportAccount() {
+  if (lastAccount) return;
+  for (const script of document.querySelectorAll('script[type="application/json"]')) {
+    const text = script.textContent;
+    const at = text.indexOf('"CurrentUserInitialData"');
+    if (at < 0) continue;
+    const seg = text.slice(at, at + 2000);
+    const pick = (key) => {
+      const m = new RegExp(`"${key}":"((?:[^"\\\\]|\\\\.)*)"`).exec(seg);
+      try {
+        return m ? JSON.parse(`"${m[1]}"`) : null;
+      } catch {
+        return null;
+      }
+    };
+    const info = { userId: pick('USER_ID'), name: pick('NAME'), shortName: pick('SHORT_NAME') };
+    if (info.userId && info.userId !== '0' && info.name) {
+      lastAccount = JSON.stringify(info);
+      ipcRenderer.send('fb:account', info);
+    }
+    return;
   }
 }
 

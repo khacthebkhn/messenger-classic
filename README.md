@@ -32,6 +32,7 @@ show its notifications because it has no Start menu shortcut.
 - A tray icon, an unread count on the taskbar, a flashing taskbar button for
   new messages, and Windows notifications. Click a notification to jump to
   the chat.
+- Several Facebook accounts, switched in one click without logging in again.
 - Three themes: **Messenger**, **Yahoo** and **Zalo**. Pick one with the
   palette button in the sidebar, or under Preferences → Theme.
 - With the Messenger theme, the title bar and sidebar take their colors from
@@ -53,10 +54,30 @@ show its notifications because it has no Start menu shortcut.
 | Ctrl+= / Ctrl+- / Ctrl+0 | Zoom in / out / reset |
 | Ctrl+R, F5 | Reload (Ctrl+Shift+R ignores the cache) |
 | Ctrl+, | Preferences menu |
+| Ctrl+Shift+1…9 | Switch to account 1…9 |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous account |
 | Ctrl+W | Close to tray |
 | Ctrl+Q | Quit |
 | Alt+Left | Back |
 | F12 | Developer tools |
+
+## Accounts
+
+Click your profile picture at the bottom of the sidebar:
+
+- **Add account…** opens a fresh Facebook login. Each account keeps its own
+  login, so after that you switch with one click and never sign in again.
+- Your accounts are listed at the top of the same menu with their unread
+  counts. You can also use **Ctrl+Shift+1…9**, or **Ctrl+Tab** to cycle.
+- A red dot on your picture means another account has unread messages. The
+  taskbar badge and tray count all accounts.
+- Other accounts keep running in the background, so their notifications still
+  arrive, and clicking one opens that account. Turn off **Preferences → Keep
+  other accounts running** to save memory (about 300 MB per account). Other
+  accounts then load only when you switch to them.
+- **Log out of …** removes that account and clears its login from the app.
+
+Logging into an account that is already added just switches to it.
 
 ## Themes
 

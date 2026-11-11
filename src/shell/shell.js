@@ -35,7 +35,7 @@ function applyState(s) {
   document.body.classList.toggle('collapsed', Boolean(s.collapsed));
 
   if (part === 'rail') renderRail(s);
-  if (part === 'title') renderBadge(s.unread || 0);
+  if (part === 'title') renderBadge(s.totalUnread || 0);
 }
 
 function renderRail(s) {
@@ -47,6 +47,16 @@ function renderRail(s) {
   badge.textContent = s.unread > 99 ? '99+' : String(s.unread || '');
 
   setAvatar(s.avatar || null);
+
+  const settings = $('#settings');
+  const others = s.otherUnread || 0;
+  $('.other-unread').hidden = !others;
+  settings.querySelector('.label').textContent = s.accountName || 'Preferences';
+  settings.title = [
+    s.accountName,
+    others ? `${others} unread in your other accounts` : '',
+    s.accountCount > 1 ? 'Switch account, add an account, preferences' : 'Add an account, preferences',
+  ].filter(Boolean).join('\n');
 
   const collapse = $('#collapse');
   collapse.title = s.collapsed ? 'Expand sidebar' : 'Collapse sidebar';

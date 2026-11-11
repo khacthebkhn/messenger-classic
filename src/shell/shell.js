@@ -46,14 +46,64 @@ function renderRail(s) {
   badge.hidden = !s.unread;
   badge.textContent = s.unread > 99 ? '99+' : String(s.unread || '');
 
-  const img = $('.avatar img');
-  if (s.avatar && img.getAttribute('src') !== s.avatar) img.src = s.avatar;
-  img.hidden = !s.avatar;
+  setAvatar(s.avatar || null);
 
   const collapse = $('#collapse');
   collapse.title = s.collapsed ? 'Expand sidebar' : 'Collapse sidebar';
   collapse.querySelector('.label').textContent = s.collapsed ? 'Expand' : 'Collapse';
 }
+
+// Profile picture. A new link is loaded off-screen first and swapped in only
+// once it works, so a failed load keeps the picture already showing. If it
+// fails (offline after sleep, or Facebook's signed link expired), the app asks
+// the page for a fresh link and retries with backoff. The person icon only
+// shows while no picture has loaded yet.
+const avatarImg = $('.avatar img');
+let avatarUrl = null; // the link we want to show
+let shownUrl = null; // the link currently on screen
+let avatarRetry = null;
+let avatarDelay = 5000;
+
+function setAvatar(url) {
+  if (url === avatarUrl) return;
+  avatarUrl = url;
+  clearTimeout(avatarRetry);
+  avatarDelay = 5000;
+  if (!url) {
+    shownUrl = null;
+    avatarImg.removeAttribute('src');
+    avatarImg.hidden = true;
+    return;
+  }
+  loadAvatar();
+}
+
+function loadAvatar() {
+  const url = avatarUrl;
+  if (!url) return;
+  const probe = new Image();
+  probe.referrerPolicy = 'no-referrer';
+  probe.onload = () => {
+    if (url !== avatarUrl) return;
+    avatarImg.src = url;
+    avatarImg.hidden = false;
+    shownUrl = url;
+    avatarDelay = 5000;
+  };
+  probe.onerror = () => {
+    if (url !== avatarUrl) return;
+    if (!shownUrl) avatarImg.hidden = true;
+    window.shell.avatarFailed(url);
+    clearTimeout(avatarRetry);
+    avatarRetry = setTimeout(loadAvatar, avatarDelay);
+    avatarDelay = Math.min(avatarDelay * 3, 5 * 60 * 1000);
+  };
+  probe.src = url;
+}
+
+window.addEventListener('online', () => {
+  if (avatarUrl && shownUrl !== avatarUrl) loadAvatar();
+});
 
 // Draw the red taskbar badge the main process puts over the app icon.
 function renderBadge(n) {
@@ -87,7 +137,6 @@ if (part === 'rail') {
   $('#theme').addEventListener('click', menuAt(window.shell.openThemeMenu));
   $('#settings').addEventListener('click', menuAt(window.shell.openMenu));
   $('#collapse').addEventListener('click', () => window.shell.toggleRail());
-  $('.avatar img').addEventListener('error', (e) => { e.target.hidden = true; });
 }
 
 window.shell.onState(applyState);

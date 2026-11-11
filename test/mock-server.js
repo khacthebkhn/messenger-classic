@@ -6,8 +6,6 @@
 const http = require('node:http');
 
 const PORT = Number(process.env.PORT || 8123);
-const avatar = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#f5a623"/><circle cx="20" cy="16" r="7" fill="#fff"/><rect x="8" y="26" width="24" height="14" rx="7" fill="#fff"/></svg>');
 
 const chats = ['Linh Tran', 'Minh Nguyen', 'Design team', 'Bao Pham', 'Ha Vu', 'Quang Le', 'Mai Do'];
 
@@ -75,7 +73,11 @@ function page(path, query) {
 </head>
 <body>
 <div role="banner"><div class="fbbar"><span>facebook (top bar that should be hidden)</span>
-  <svg width="40" height="40" aria-label="Your profile"><image href="${avatar}" width="40" height="40"/></svg></div></div>
+  <div role="navigation" aria-label="Account Controls and Settings"><svg id="me" width="40" height="40" aria-label="Your profile"><image href="/avatar/me.svg" width="40" height="40"/></svg></div></div>
+  <!-- Facebook draws pop-ups (notifications...) inside the banner element, below the bar. -->
+  <div id="popover" style="position:fixed; top:60px; right:16px; width:340px; padding:8px; background:var(--surface-background); box-shadow:0 4px 16px rgba(0,0,0,.25); border-radius:8px; z-index:4; display:${query.has('popover') ? 'block' : 'none'}">
+    ${['Ana', 'Ben', 'Chi'].map((n) => `<div style="display:flex;gap:8px;align-items:center;padding:6px"><svg width="40" height="40"><image href="/avatar/other.svg?${n}" width="40" height="40"/></svg>${n} commented</div>`).join('')}
+  </div></div>
 <div class="page ${mode}">
   <div role="navigation" aria-label="Thread list" class="${mode}">
     <h1>Chats</h1><div class="search">Search Messenger</div>
@@ -113,15 +115,41 @@ function page(path, query) {
   dlg.onclick = () => backdrop.classList.add('open');
   backdrop.onclick = () => backdrop.classList.remove('open');
   spa.onclick = () => history.pushState({}, '', '/watch/');
+  window.mock = {
+    popover: (on) => { document.getElementById('popover').style.display = on ? 'block' : 'none'; },
+    // Facebook hands out a new signed link for the same picture now and then.
+    newAvatarLink: (path) => document.querySelector('#me image').setAttribute('href', path),
+    // Facebook re-renders the account button now and then; drop it for a while.
+    dropAvatar: (ms) => { const me = document.getElementById('me'); const parent = me.parentNode; me.remove(); setTimeout(() => parent.appendChild(me), ms); },
+  };
   notify.onclick = () => Notification.requestPermission().then((p) => { window.__lastPermission = p; new Notification('Linh Tran', { body: 'New message' }); });
 </script>
 </body>
 </html>`;
 }
 
+let avatarFailures = 0;
+const face = (bg) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="${bg}"/><circle cx="20" cy="16" r="7" fill="#fff"/><rect x="8" y="26" width="24" height="14" rx="7" fill="#fff"/></svg>`;
+
 http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   console.log('[mock]', req.method, url.pathname + url.search);
+  // /avatar-fail?n=3 makes the next 3 profile-picture requests fail (network blip).
+  if (url.pathname === '/avatar-fail') {
+    avatarFailures = Number(url.searchParams.get('n') || 1);
+    res.writeHead(204);
+    return res.end();
+  }
+  if (url.pathname.startsWith('/avatar/')) {
+    // Fail only the app sidebar's requests (they have no Referer), not the page's own.
+    if (url.pathname.startsWith('/avatar/me') && avatarFailures > 0 && !req.headers.referer) {
+      avatarFailures--;
+      res.writeHead(503);
+      return res.end();
+    }
+    res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'no-store' });
+    return res.end(face(url.pathname.startsWith('/avatar/me') ? '#f5a623' : '#3b82f6'));
+  }
   if (url.pathname === '/' || url.pathname === '/home.php') {
     res.writeHead(200, { 'content-type': 'text/html' });
     return res.end('<!doctype html><title>Facebook</title><h1>HOME FEED (app should never stay here)</h1>');

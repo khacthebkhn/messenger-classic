@@ -74,6 +74,8 @@ let loggedIn = false;
 let unread = 0;
 let fbPalette = null;
 let avatar = null;
+let userId = null;
+let avatarRetryAt = 0;
 let activeRoute = null;
 let onMessagesPage = false;
 let fbMetrics = { banner: null, overlay: false };
@@ -127,8 +129,44 @@ async function refreshLogin(ses) {
   try {
     const cookies = await ses.cookies.get({ url: START.origin, name: 'c_user' });
     loggedIn = cookies.length > 0;
+    userId = loggedIn ? cookies[0].value : null;
   } catch {
     loggedIn = false;
+    userId = null;
+  }
+  syncAvatarOwner();
+}
+
+// ---------------------------------------------------------------------------
+// Profile picture in the sidebar. It is remembered per Facebook account, so it
+// shows right away on start, and never carries over to another account.
+// ---------------------------------------------------------------------------
+function syncAvatarOwner() {
+  let next = avatar;
+  if (!userId) {
+    next = null;
+  } else if (store.get('avatarUser') !== userId) {
+    store.set('avatarUser', userId);
+    store.set('avatar', null);
+    next = null;
+  } else if (!next) {
+    next = store.get('avatar') || null;
+  }
+  if (next !== avatar) {
+    avatar = next;
+    pushShellState();
+  }
+}
+
+// Real profile pictures come from Facebook's photo CDN. Static rsrc.php
+// assets are generic placeholders, so they never replace a real picture.
+function isProfilePicture(url) {
+  try {
+    const u = new URL(url);
+    if (process.env.MESSENGER_URL && u.host === START.host) return true; // local mock
+    return u.protocol === 'https:' && /(^|\.)fbcdn\.net$/.test(u.hostname) && !u.hostname.startsWith('static.');
+  } catch {
+    return false;
   }
 }
 
@@ -790,7 +828,10 @@ async function logOut() {
   await ses.clearStorageData();
   await ses.clearCache();
   loggedIn = false;
+  userId = null;
   avatar = null;
+  store.set('avatar', null);
+  store.set('avatarUser', null);
   fbPalette = null;
   updateUnreadFromTitle('Messenger');
   fbView.webContents.loadURL(START_URL);
@@ -897,9 +938,20 @@ function registerIpc() {
   });
 
   ipcMain.on('fb:avatar', (e, url) => {
-    if (!fromFbView(e) || url === avatar) return;
-    avatar = typeof url === 'string' && /^https:\/\//.test(url) ? url : null;
+    if (!fromFbView(e) || !loggedIn || typeof url !== 'string' || !isProfilePicture(url)) return;
+    if (url === avatar) return;
+    avatar = url;
+    store.set('avatar', url);
+    store.set('avatarUser', userId);
     pushShellState();
+  });
+
+  // The sidebar couldn't load the picture (offline, or Facebook's signed link
+  // expired). Ask the page for its current one, at most once a minute.
+  ipcMain.on('shell:avatar-failed', (_e, url) => {
+    if (url !== avatar || Date.now() - avatarRetryAt < 60_000) return;
+    avatarRetryAt = Date.now();
+    fbView?.webContents.send('mc:resend-avatar');
   });
 
   ipcMain.handle('shell:get-state', () => shellState());

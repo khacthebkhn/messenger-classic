@@ -266,12 +266,28 @@ function bannerCovered(banner) {
   return false;
 }
 
+// Your profile picture is the round 40px image at the right end of Facebook's
+// top bar ("Account Controls and Settings"). Pop-ups such as notifications are
+// also drawn inside the bar's element, below it, and are full of other
+// people's pictures, so only images that sit inside the bar itself count.
 function findAvatar(banner) {
   if (!banner) return null;
-  const images = banner.el.querySelectorAll('svg image');
-  const img = images[images.length - 1];
-  if (!img) return null;
-  return img.getAttribute('xlink:href') || img.getAttribute('href') || null;
+  let best = null;
+  for (const n of banner.el.querySelectorAll('svg image, img')) {
+    const r = n.getBoundingClientRect();
+    const inBar = r.top >= banner.rect.top - 1 && r.bottom <= banner.rect.bottom + 1;
+    const avatarSized = r.width >= 24 && r.width <= 56 && Math.abs(r.width - r.height) <= 2;
+    const rightSide = r.left + r.width / 2 > innerWidth * 0.6;
+    if (!inBar || !avatarSized || !rightSide) continue;
+    if (!best || r.right > best.rect.right) best = { el: n, rect: r };
+  }
+  if (!best) return null;
+  const href = best.el.getAttribute('xlink:href') || best.el.getAttribute('href') || best.el.getAttribute('src');
+  try {
+    return href ? new URL(href, location.href).href : null;
+  } catch {
+    return null;
+  }
 }
 
 let loadedAt = 0;
@@ -326,12 +342,20 @@ function report() {
     }
   }
 
+  // Only report a picture we actually found; a missing one (page still
+  // loading, bar re-rendering) must not wipe out the last good one.
   const av = findAvatar(banner);
-  if (av !== lastAvatar && (av || pageReady)) {
+  if (av && av !== lastAvatar) {
     lastAvatar = av;
     ipcRenderer.send('fb:avatar', av);
   }
 }
+
+// The sidebar couldn't load the picture we sent; send it again next time.
+ipcRenderer.on('mc:resend-avatar', () => {
+  lastAvatar = undefined;
+  scheduleReport();
+});
 
 let queued = false;
 function scheduleReport() {

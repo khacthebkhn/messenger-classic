@@ -9,4 +9,5 @@ contextBridge.exposeInMainWorld('shell', {
   openThemeMenu: (x, y) => ipcRenderer.send('shell:theme-menu', { x, y }),
   toggleRail: () => ipcRenderer.send('shell:toggle-rail'),
   setBadge: (dataUrl, count) => ipcRenderer.send('shell:badge', { dataUrl, count }),
+  avatarFailed: (url) => ipcRenderer.send('shell:avatar-failed', url),
 });

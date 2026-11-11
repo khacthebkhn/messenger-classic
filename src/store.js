@@ -14,6 +14,8 @@ const DEFAULTS = {
   showRail: true,
   railCollapsed: true,
   lastBanner: null,
+  avatar: null,
+  avatarUser: null,
   zoom: 1,
   bounds: null,
   maximized: false,
@@ -43,8 +45,12 @@ function flush() {
   clearTimeout(saveTimer);
   saveTimer = null;
   try {
+    // Write a temp file and rename it over the old one, so a force-quit in the
+    // middle of saving can't leave an empty settings file behind.
     fs.mkdirSync(path.dirname(file()), { recursive: true });
-    fs.writeFileSync(file(), JSON.stringify(load(), null, 2));
+    const tmp = `${file()}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(load(), null, 2));
+    fs.renameSync(tmp, file());
   } catch (err) {
     console.error('Could not save settings:', err);
   }

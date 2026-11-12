@@ -6,7 +6,8 @@ const {
 const path = require('node:path');
 const fs = require('node:fs');
 const store = require('./store');
-const { SKINS, messengerShell, skinOf } = require('./skins');
+const { SKINS, messengerShell, skinOf, skinShell, skinMode } = require('./skins');
+const { createUpdater } = require('./updater');
 
 // ---------------------------------------------------------------------------
 // Config
@@ -69,6 +70,8 @@ let railView = null;
 let titleView = null;
 let tray = null;
 let quitting = false;
+let updater = null;
+const popupWindows = new Set(); // call windows; an update waits until they close
 
 // Accounts. Each one has its own saved session (partition) and its own
 // Facebook view. The views of other accounts keep running hidden, so
@@ -111,11 +114,24 @@ async function init() {
   createWindow();
   createTray();
   registerIpc();
+  updater = createUpdater({
+    getWindow: () => win,
+    store,
+    beforeQuit: () => { quitting = true; store.flush(); },
+    isBusy: () => popupWindows.size > 0,
+    onStatus: updateTray,
+    debug,
+  });
+  updater.schedule();
   watchCustomCss();
   for (const a of accounts.values()) cacheAvatarIcon(a.avatar);
 
   nativeTheme.on('updated', () => {
-    if (!active()?.palette) applyPalette();
+    // Viber and Telegram follow the color mode, in the page and around it.
+    if (SKINS[currentSkin()].shells) {
+      sendFbSettings();
+      applyPalette();
+    } else if (!active()?.palette) applyPalette();
   });
 }
 
@@ -471,11 +487,11 @@ function currentSkin() {
 
 // Colors for the title bar and sidebar under the current skin.
 function shellTheme() {
-  const skin = SKINS[currentSkin()];
-  return skin.shell || messengerShell(palette());
+  return skinShell(currentSkin(), nativeTheme.shouldUseDarkColors) || messengerShell(palette());
 }
 
 // Yahoo and Zalo are light-only looks, so they pin the app to light mode.
+// Viber and Telegram have both and follow the Color mode setting.
 function effectiveThemeSource() {
   return SKINS[currentSkin()].lightOnly ? 'light' : store.get('theme');
 }
@@ -709,6 +725,8 @@ function setupWindowOpen(wc, a) {
   });
   wc.on('did-create-window', (child) => {
     childOwner.set(child.webContents, a);
+    popupWindows.add(child);
+    child.on('closed', () => popupWindows.delete(child));
     child.setMenuBarVisibility(false);
     child.webContents.on('will-navigate', (e, url) => guardNavigation(e, url, child.webContents, a, { popup: true }));
     setupContextMenu(child.webContents);
@@ -975,6 +993,8 @@ function settingsTemplate() {
       ],
     },
     { type: 'separator' },
+    ...(updater ? updater.menuItems() : []),
+    { type: 'separator' },
     { label: 'New message', accelerator: 'CmdOrCtrl+N', click: () => goTo('compose') },
     { label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => activeView()?.webContents.reload() },
     { label: 'Open this page in browser', click: () => activeView() && openExternal(activeView().webContents.getURL()) },
@@ -1092,7 +1112,11 @@ function setLaunchAtLogin(enabled) {
 }
 
 function fbSettings() {
-  return { notifications: Boolean(store.get('notifications')), skin: currentSkin() };
+  return {
+    notifications: Boolean(store.get('notifications')),
+    skin: currentSkin(),
+    mode: skinMode(currentSkin(), nativeTheme.shouldUseDarkColors),
+  };
 }
 
 function sendFbSettings() {
@@ -1155,7 +1179,8 @@ function updateTray() {
   if (!tray) return;
   const total = totalUnread();
   tray.setImage(trayImage(total > 0));
-  tray.setToolTip(total ? `Messenger: ${total} unread` : 'Messenger');
+  const status = updater?.statusText();
+  tray.setToolTip([total ? `Messenger: ${total} unread` : 'Messenger', status].filter(Boolean).join('\n'));
   const list = accounts.size > 1 ? [...accounts.values()].map((a) => ({
     label: accountLabel(a) + (a.unread ? `   (${a.unread})` : ''),
     type: 'radio',
@@ -1167,6 +1192,7 @@ function updateTray() {
     ...(list.length ? [{ type: 'separator' }, ...list] : []),
     { type: 'separator' },
     { label: 'Start with Windows', type: 'checkbox', checked: store.get('launchAtLogin'), click: (i) => setLaunchAtLogin(i.checked) },
+    updater?.menuItems()[0] || { label: 'Check for updates…', enabled: false },
     { label: 'Quit', click: quit },
   ]));
 }

@@ -1,8 +1,10 @@
 'use strict';
 // App themes ("skins").
 // - messenger: follows Facebook's own colors, light or dark.
-// - yahoo, zalo: fixed light looks. They color the title bar and sidebar
-//   here, and restyle Facebook's page through src/inject/skins.css.
+// - yahoo, zalo: fixed light looks.
+// - viber, telegram: light and dark looks that follow the app's color mode.
+// They color the title bar and sidebar here (`shell`, or `shells.light` and
+// `shells.dark`), and restyle Facebook's page through src/inject/skins.css.
 
 const SKINS = {
   messenger: { label: 'Messenger', lightOnly: false },
@@ -56,6 +58,102 @@ const SKINS = {
       dark: false,
     },
   },
+  viber: {
+    label: 'Viber',
+    lightOnly: false,
+    shells: {
+      light: {
+        titleBg: '#7360f2',
+        titleFg: 'rgba(255,255,255,0.92)',
+        overlay: '#7360f2',
+        overlaySymbol: '#ffffff',
+        joinRail: false,
+        railBg: '#f7f6fd',
+        railRing: '#f7f6fd',
+        railFg: '#8a88a0',
+        railFgActive: '#7360f2',
+        railText: '#1f1d2b',
+        railHover: 'rgba(115,96,242,0.08)',
+        railActive: 'rgba(115,96,242,0.14)',
+        railBorder: '#ebe9f5',
+        badgeBg: '#7360f2',
+        badgeFg: '#ffffff',
+        brand: '#ffffff',
+        brandDots: '#7360f2',
+        windowBg: '#ffffff',
+        dark: false,
+      },
+      dark: {
+        titleBg: '#1b1a22',
+        titleFg: '#a7a4bd',
+        overlay: '#1b1a22',
+        overlaySymbol: '#ecebf3',
+        joinRail: false,
+        railBg: '#1b1a22',
+        railRing: '#1b1a22',
+        railFg: '#8e8ba6',
+        railFgActive: '#9d8fff',
+        railText: '#ecebf3',
+        railHover: 'rgba(255,255,255,0.06)',
+        railActive: 'rgba(157,143,255,0.16)',
+        railBorder: '#2a2935',
+        badgeBg: '#7360f2',
+        badgeFg: '#ffffff',
+        brand: '#7360f2',
+        brandDots: '#ffffff',
+        windowBg: '#15141b',
+        dark: true,
+      },
+    },
+  },
+  telegram: {
+    label: 'Telegram',
+    lightOnly: false,
+    shells: {
+      light: {
+        titleBg: '#517da2',
+        titleFg: 'rgba(255,255,255,0.92)',
+        overlay: '#517da2',
+        overlaySymbol: '#ffffff',
+        joinRail: false,
+        railBg: '#ffffff',
+        railRing: '#ffffff',
+        railFg: '#8d969c',
+        railFgActive: '#3390ec',
+        railText: '#000000',
+        railHover: 'rgba(0,0,0,0.04)',
+        railActive: 'rgba(51,144,236,0.12)',
+        railBorder: '#dadce0',
+        badgeBg: '#3390ec',
+        badgeFg: '#ffffff',
+        brand: '#2aabee',
+        brandDots: '#ffffff',
+        windowBg: '#ffffff',
+        dark: false,
+      },
+      dark: {
+        titleBg: '#17212b',
+        titleFg: '#708499',
+        overlay: '#17212b',
+        overlaySymbol: '#f5f5f5',
+        joinRail: false,
+        railBg: '#0e1621',
+        railRing: '#0e1621',
+        railFg: '#6c7883',
+        railFgActive: '#6ab3f3',
+        railText: '#f5f5f5',
+        railHover: 'rgba(255,255,255,0.05)',
+        railActive: 'rgba(106,179,243,0.14)',
+        railBorder: '#0b121b',
+        badgeBg: '#5288c1',
+        badgeFg: '#ffffff',
+        brand: '#2aabee',
+        brandDots: '#ffffff',
+        windowBg: '#0e1621',
+        dark: true,
+      },
+    },
+  },
 };
 
 // The Messenger skin borrows its colors from Facebook's page.
@@ -87,4 +185,19 @@ function skinOf(name) {
   return SKINS[name] ? name : 'messenger';
 }
 
-module.exports = { SKINS, messengerShell, skinOf };
+// Title bar and sidebar colors of a fixed skin (null for Messenger).
+function skinShell(name, dark) {
+  const skin = SKINS[skinOf(name)];
+  if (skin.shells) return skin.shells[dark ? 'dark' : 'light'];
+  return skin.shell || null;
+}
+
+// The mode a skin pins Facebook's page to: null for Messenger (Facebook's own).
+function skinMode(name, dark) {
+  const skin = SKINS[skinOf(name)];
+  if (!skin.shell && !skin.shells) return null;
+  if (skin.lightOnly) return 'light';
+  return dark ? 'dark' : 'light';
+}
+
+module.exports = { SKINS, messengerShell, skinOf, skinShell, skinMode };

@@ -23,6 +23,8 @@ const DEFAULTS = {
   bounds: null,
   maximized: false,
   themeHintShown: false,
+  autoCheckUpdates: true,
+  skippedVersion: null, // "Skip this version" in the update prompt
 };
 
 let data = null;

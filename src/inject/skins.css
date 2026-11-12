@@ -1,12 +1,14 @@
 /*
- * Yahoo and Zalo skins for facebook.com/messages.
+ * Yahoo, Zalo, Viber and Telegram skins for facebook.com/messages.
  *
  * Facebook's class names change all the time, but its colors come from CSS
  * variables (--surface-background, --chat-outgoing-message-bubble-background-color,
  * ...). These rules only override those variables, so they keep working when
- * Facebook ships new markup. The app puts data-mc-skin on <html> and, while a
- * skin is on, swaps Facebook's __fb-dark-mode classes (it nests them all over
- * the page) for __fb-light-mode, so every other variable has its light value.
+ * Facebook ships new markup. The app puts data-mc-skin and data-mc-mode
+ * ("light" or "dark") on <html> and pins Facebook's __fb-light-mode /
+ * __fb-dark-mode classes (it nests them all over the page) to that mode, so
+ * every other variable has the matching light or dark value. Yahoo and Zalo
+ * are light only; Viber and Telegram follow the app's color mode.
  *
  * Chat themes (gradients, wallpapers) set their own variables inline on
  * elements inside [role="main"], so the chat variables are repeated there.
@@ -175,11 +177,316 @@ html[data-mc-skin="yahoo"] body * {
   font-family: Tahoma, Verdana, "Segoe UI Historic", "Segoe UI", "Segoe UI Emoji", sans-serif !important;
 }
 
-/* ================================================= both light skins ======= */
+/* ======================================================= Viber ======== */
+/* Viber, light */
+html[data-mc-skin="viber"][data-mc-mode="light"],
+html[data-mc-skin="viber"][data-mc-mode="light"] .__fb-light-mode {
+  --surface-background: #ffffff !important;
+  --card-background: #ffffff !important;
+  --card-background-flat: #f7f6fd !important;
+  --messenger-card-background: #ffffff !important;
+  --popover-background: #ffffff !important;
+  --popover-card-background: #ffffff !important;
+  --nav-bar-background: #ffffff !important;
+  --web-wash: #f2f1f8 !important;
+  --wash: #f2f1f8 !important;
+
+  --primary-text: #1f1d2b !important;
+  --secondary-text: #87859b !important;
+  --placeholder-text: #87859b !important;
+  --primary-icon: #1f1d2b !important;
+  --secondary-icon: #87859b !important;
+  --placeholder-icon: #87859b !important;
+
+  --accent: #7360f2 !important;
+  --primary-button-background: #7360f2 !important;
+  --buttonSendBackgroundColor: #7360f2 !important;
+  --blue-link: #665cf2 !important;
+  --cursor: #7360f2 !important;
+  --focus-ring-blue: #7360f2 !important;
+  --badge-background-color-blue: #7360f2 !important;
+  --radio-checked-icon-color: #7360f2 !important;
+  --radio-border-color-selected: #7360f2 !important;
+  --toggle-active-background: #7360f2 !important;
+  --notification-badge: #f25555 !important;
+
+  --hover-overlay: rgba(115, 96, 242, 0.06) !important;
+  --hosted-view-selected-state: #efecfe !important;
+  --divider: #ebe9f5 !important;
+  --comment-background: #f2f1f8 !important;
+  --input-background: #ffffff !important;
+  --highlight-bg: rgba(115, 96, 242, 0.22) !important;
+  --text-highlight: rgba(115, 96, 242, 0.22) !important;
+  --messenger-reply-background: #f7f6fd !important;
+  --chat-replied-message-background-color: rgba(115, 96, 242, 0.10) !important;
+
+  --chat-bubble-border-radius: 16px !important;
+}
+
+html[data-mc-skin="viber"][data-mc-mode="light"],
+html[data-mc-skin="viber"][data-mc-mode="light"] [role="main"],
+html[data-mc-skin="viber"][data-mc-mode="light"] [role="main"] * {
+  --mwp-primary-theme-color: #7360f2 !important;
+  --mwp-header-button-color: #7360f2 !important;
+  --mwp-message-row-background: #f2f1f8 !important;
+  --mwp-reply-background-color: #f7f6fd !important;
+  --chat-outgoing-message-bubble-background-color: #e4defe !important;
+  --chat-outgoing-message-background-gradient: linear-gradient(#e4defe, #e4defe) !important;
+  --chat-message-text-color: #1f1d2b !important;
+  --bubbleContentUserBackgroundColor: #e4defe !important;
+  --bubbleContentUserColor: #1f1d2b !important;
+  --chat-incoming-message-bubble-background-color: #ffffff !important;
+  --chat-incoming-message-text-color: #1f1d2b !important;
+  --chat-composer-background-color: #ffffff !important;
+  --chat-composer-input-background-color: #f2f1f8 !important;
+  --chat-composer-button-color: #7360f2 !important;
+  --chat-composer-caret-color: #7360f2 !important;
+  --chat-edit-message-overlay-color: #ffffff !important;
+  --reaction-pill-multireact-selected-color: #efecfe !important;
+  --reaction-pill-background-color: #ffffff !important;
+  --mwp-header-background-color: #ffffff !important;
+  --mwp-header-text-color: #1f1d2b !important;
+  --mwp-subheader-text-color: #87859b !important;
+  --chat-admin-text-color: #87859b !important;
+  --chat-replied-message-background-color: rgba(115, 96, 242, 0.10) !important;
+  --chat-scrollbar-thumb-color: rgba(31, 29, 43, 0.22) !important;
+  --chat-scrollbar-track-color: transparent !important;
+  --text-highlight: rgba(115, 96, 242, 0.22) !important;
+}
+
+/* Viber, dark */
+html[data-mc-skin="viber"][data-mc-mode="dark"],
+html[data-mc-skin="viber"][data-mc-mode="dark"] .__fb-dark-mode {
+  --surface-background: #1f1e27 !important;
+  --card-background: #1f1e27 !important;
+  --card-background-flat: #26252f !important;
+  --messenger-card-background: #1f1e27 !important;
+  --popover-background: #26252f !important;
+  --popover-card-background: #26252f !important;
+  --nav-bar-background: #1f1e27 !important;
+  --web-wash: #15141b !important;
+  --wash: #15141b !important;
+
+  --primary-text: #ecebf3 !important;
+  --secondary-text: #9a98ae !important;
+  --placeholder-text: #9a98ae !important;
+  --primary-icon: #ecebf3 !important;
+  --secondary-icon: #9a98ae !important;
+  --placeholder-icon: #9a98ae !important;
+
+  --accent: #8c7cff !important;
+  --primary-button-background: #8c7cff !important;
+  --buttonSendBackgroundColor: #8c7cff !important;
+  --blue-link: #a99dff !important;
+  --cursor: #8c7cff !important;
+  --focus-ring-blue: #8c7cff !important;
+  --badge-background-color-blue: #8c7cff !important;
+  --radio-checked-icon-color: #8c7cff !important;
+  --radio-border-color-selected: #8c7cff !important;
+  --toggle-active-background: #8c7cff !important;
+  --notification-badge: #ff5c5c !important;
+
+  --hover-overlay: rgba(255, 255, 255, 0.06) !important;
+  --hosted-view-selected-state: #2d2948 !important;
+  --divider: #2e2d39 !important;
+  --comment-background: #2a2934 !important;
+  --input-background: #1f1e27 !important;
+  --highlight-bg: rgba(140, 124, 255, 0.32) !important;
+  --text-highlight: rgba(140, 124, 255, 0.32) !important;
+  --messenger-reply-background: #26252f !important;
+  --chat-replied-message-background-color: rgba(140, 124, 255, 0.14) !important;
+
+  --chat-bubble-border-radius: 16px !important;
+}
+
+html[data-mc-skin="viber"][data-mc-mode="dark"],
+html[data-mc-skin="viber"][data-mc-mode="dark"] [role="main"],
+html[data-mc-skin="viber"][data-mc-mode="dark"] [role="main"] * {
+  --mwp-primary-theme-color: #8c7cff !important;
+  --mwp-header-button-color: #8c7cff !important;
+  --mwp-message-row-background: #15141b !important;
+  --mwp-reply-background-color: #26252f !important;
+  --chat-outgoing-message-bubble-background-color: #5b4cc4 !important;
+  --chat-outgoing-message-background-gradient: linear-gradient(#5b4cc4, #5b4cc4) !important;
+  --chat-message-text-color: #ffffff !important;
+  --bubbleContentUserBackgroundColor: #5b4cc4 !important;
+  --bubbleContentUserColor: #ffffff !important;
+  --chat-incoming-message-bubble-background-color: #2a2934 !important;
+  --chat-incoming-message-text-color: #ecebf3 !important;
+  --chat-composer-background-color: #1f1e27 !important;
+  --chat-composer-input-background-color: #2a2934 !important;
+  --chat-composer-button-color: #8c7cff !important;
+  --chat-composer-caret-color: #8c7cff !important;
+  --chat-edit-message-overlay-color: #1f1e27 !important;
+  --reaction-pill-multireact-selected-color: #2d2948 !important;
+  --reaction-pill-background-color: #26252f !important;
+  --mwp-header-background-color: #1f1e27 !important;
+  --mwp-header-text-color: #ecebf3 !important;
+  --mwp-subheader-text-color: #9a98ae !important;
+  --chat-admin-text-color: #9a98ae !important;
+  --chat-replied-message-background-color: rgba(140, 124, 255, 0.14) !important;
+  --chat-scrollbar-thumb-color: rgba(236, 235, 243, 0.22) !important;
+  --chat-scrollbar-track-color: transparent !important;
+  --text-highlight: rgba(140, 124, 255, 0.32) !important;
+}
+
+/* ==================================================== Telegram ======== */
+/* Telegram, light */
+html[data-mc-skin="telegram"][data-mc-mode="light"],
+html[data-mc-skin="telegram"][data-mc-mode="light"] .__fb-light-mode {
+  --surface-background: #ffffff !important;
+  --card-background: #ffffff !important;
+  --card-background-flat: #f4f4f5 !important;
+  --messenger-card-background: #ffffff !important;
+  --popover-background: #ffffff !important;
+  --popover-card-background: #ffffff !important;
+  --nav-bar-background: #ffffff !important;
+  --web-wash: #f1f1f1 !important;
+  --wash: #f1f1f1 !important;
+
+  --primary-text: #000000 !important;
+  --secondary-text: #707579 !important;
+  --placeholder-text: #707579 !important;
+  --primary-icon: #000000 !important;
+  --secondary-icon: #707579 !important;
+  --placeholder-icon: #707579 !important;
+
+  --accent: #3390ec !important;
+  --primary-button-background: #3390ec !important;
+  --buttonSendBackgroundColor: #3390ec !important;
+  --blue-link: #3390ec !important;
+  --cursor: #3390ec !important;
+  --focus-ring-blue: #3390ec !important;
+  --badge-background-color-blue: #3390ec !important;
+  --radio-checked-icon-color: #3390ec !important;
+  --radio-border-color-selected: #3390ec !important;
+  --toggle-active-background: #3390ec !important;
+  --notification-badge: #e53935 !important;
+
+  --hover-overlay: rgba(0, 0, 0, 0.04) !important;
+  --hosted-view-selected-state: #e3f0fd !important;
+  --divider: #dadce0 !important;
+  --comment-background: #f4f4f5 !important;
+  --input-background: #ffffff !important;
+  --highlight-bg: rgba(51, 144, 236, 0.25) !important;
+  --text-highlight: rgba(51, 144, 236, 0.25) !important;
+  --messenger-reply-background: #f4f4f5 !important;
+  --chat-replied-message-background-color: rgba(51, 144, 236, 0.10) !important;
+
+  --chat-bubble-border-radius: 12px !important;
+}
+
+html[data-mc-skin="telegram"][data-mc-mode="light"],
+html[data-mc-skin="telegram"][data-mc-mode="light"] [role="main"],
+html[data-mc-skin="telegram"][data-mc-mode="light"] [role="main"] * {
+  --mwp-primary-theme-color: #3390ec !important;
+  --mwp-header-button-color: #3390ec !important;
+  --mwp-message-row-background: #c9d9b0 !important;
+  --mwp-reply-background-color: #f4f4f5 !important;
+  --chat-outgoing-message-bubble-background-color: #effedd !important;
+  --chat-outgoing-message-background-gradient: linear-gradient(#effedd, #effedd) !important;
+  --chat-message-text-color: #000000 !important;
+  --bubbleContentUserBackgroundColor: #effedd !important;
+  --bubbleContentUserColor: #000000 !important;
+  --chat-incoming-message-bubble-background-color: #ffffff !important;
+  --chat-incoming-message-text-color: #000000 !important;
+  --chat-composer-background-color: #ffffff !important;
+  --chat-composer-input-background-color: #f4f4f5 !important;
+  --chat-composer-button-color: #3390ec !important;
+  --chat-composer-caret-color: #3390ec !important;
+  --chat-edit-message-overlay-color: #ffffff !important;
+  --reaction-pill-multireact-selected-color: #e3f0fd !important;
+  --reaction-pill-background-color: #ffffff !important;
+  --mwp-header-background-color: #ffffff !important;
+  --mwp-header-text-color: #000000 !important;
+  --mwp-subheader-text-color: #707579 !important;
+  --chat-admin-text-color: #707579 !important;
+  --chat-replied-message-background-color: rgba(51, 144, 236, 0.10) !important;
+  --chat-scrollbar-thumb-color: rgba(0, 0, 0, 0.2) !important;
+  --chat-scrollbar-track-color: transparent !important;
+  --text-highlight: rgba(51, 144, 236, 0.25) !important;
+}
+
+/* Telegram, dark */
+html[data-mc-skin="telegram"][data-mc-mode="dark"],
+html[data-mc-skin="telegram"][data-mc-mode="dark"] .__fb-dark-mode {
+  --surface-background: #17212b !important;
+  --card-background: #17212b !important;
+  --card-background-flat: #1e2c3a !important;
+  --messenger-card-background: #17212b !important;
+  --popover-background: #17212b !important;
+  --popover-card-background: #17212b !important;
+  --nav-bar-background: #17212b !important;
+  --web-wash: #0e1621 !important;
+  --wash: #0e1621 !important;
+
+  --primary-text: #f5f5f5 !important;
+  --secondary-text: #708499 !important;
+  --placeholder-text: #708499 !important;
+  --primary-icon: #f5f5f5 !important;
+  --secondary-icon: #708499 !important;
+  --placeholder-icon: #708499 !important;
+
+  --accent: #5288c1 !important;
+  --primary-button-background: #5288c1 !important;
+  --buttonSendBackgroundColor: #5288c1 !important;
+  --blue-link: #6ab3f3 !important;
+  --cursor: #5288c1 !important;
+  --focus-ring-blue: #5288c1 !important;
+  --badge-background-color-blue: #5288c1 !important;
+  --radio-checked-icon-color: #5288c1 !important;
+  --radio-border-color-selected: #5288c1 !important;
+  --toggle-active-background: #5288c1 !important;
+  --notification-badge: #e53935 !important;
+
+  --hover-overlay: rgba(255, 255, 255, 0.05) !important;
+  --hosted-view-selected-state: #2b5278 !important;
+  --divider: #0b121b !important;
+  --comment-background: #242f3d !important;
+  --input-background: #17212b !important;
+  --highlight-bg: rgba(106, 179, 243, 0.3) !important;
+  --text-highlight: rgba(106, 179, 243, 0.3) !important;
+  --messenger-reply-background: #1e2c3a !important;
+  --chat-replied-message-background-color: rgba(106, 179, 243, 0.12) !important;
+
+  --chat-bubble-border-radius: 12px !important;
+}
+
+html[data-mc-skin="telegram"][data-mc-mode="dark"],
+html[data-mc-skin="telegram"][data-mc-mode="dark"] [role="main"],
+html[data-mc-skin="telegram"][data-mc-mode="dark"] [role="main"] * {
+  --mwp-primary-theme-color: #5288c1 !important;
+  --mwp-header-button-color: #5288c1 !important;
+  --mwp-message-row-background: #0e1621 !important;
+  --mwp-reply-background-color: #1e2c3a !important;
+  --chat-outgoing-message-bubble-background-color: #2b5278 !important;
+  --chat-outgoing-message-background-gradient: linear-gradient(#2b5278, #2b5278) !important;
+  --chat-message-text-color: #ffffff !important;
+  --bubbleContentUserBackgroundColor: #2b5278 !important;
+  --bubbleContentUserColor: #ffffff !important;
+  --chat-incoming-message-bubble-background-color: #182533 !important;
+  --chat-incoming-message-text-color: #f5f5f5 !important;
+  --chat-composer-background-color: #17212b !important;
+  --chat-composer-input-background-color: #242f3d !important;
+  --chat-composer-button-color: #5288c1 !important;
+  --chat-composer-caret-color: #5288c1 !important;
+  --chat-edit-message-overlay-color: #17212b !important;
+  --reaction-pill-multireact-selected-color: #2b5278 !important;
+  --reaction-pill-background-color: #17212b !important;
+  --mwp-header-background-color: #17212b !important;
+  --mwp-header-text-color: #f5f5f5 !important;
+  --mwp-subheader-text-color: #708499 !important;
+  --chat-admin-text-color: #708499 !important;
+  --chat-replied-message-background-color: rgba(106, 179, 243, 0.12) !important;
+  --chat-scrollbar-thumb-color: rgba(245, 245, 245, 0.2) !important;
+  --chat-scrollbar-track-color: transparent !important;
+  --text-highlight: rgba(106, 179, 243, 0.3) !important;
+}
+
+/* ======================================================= all skins ======= */
 /* A chat theme's wallpaper is an inline background image on one large element
    (the app marks it with data-mc-wallpaper); flatten it to the skin's color. */
-html[data-mc-skin="zalo"] [data-mc-wallpaper],
-html[data-mc-skin="yahoo"] [data-mc-wallpaper] {
+html[data-mc-mode] [data-mc-wallpaper] {
   background-image: none !important;
   background-color: var(--mwp-message-row-background) !important;
 }

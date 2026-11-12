@@ -4,30 +4,36 @@
 const { ipcRenderer, contextBridge, webFrame } = require('electron');
 
 // ---------------------------------------------------------------------------
-// Settings from the app: notifications switch and the current skin.
+// Settings from the app: notifications switch, the current skin and the mode
+// that skin pins Facebook's page to ('light', 'dark', or null for Messenger).
 // ---------------------------------------------------------------------------
 let notificationsEnabled = true;
 let skin = 'messenger';
+let mode = null;
 
 function applySettings(s) {
   if (!s) return;
   notificationsEnabled = Boolean(s.notifications);
   skin = s.skin || 'messenger';
+  mode = s.mode === 'light' || s.mode === 'dark' ? s.mode : null;
   syncSkin();
 }
 
 ipcRenderer.on('mc:settings', (_e, s) => applySettings(s));
 
 // ---------------------------------------------------------------------------
-// Skins. src/inject/skins.css keys off html[data-mc-skin]. The Yahoo and Zalo
-// skins are light looks. Facebook marks dark mode with __fb-dark-mode classes
-// on <html> and on many containers inside the page, so while a light skin is
-// on, every one of them is swapped for __fb-light-mode (tagged
-// data-mc-was-dark so it can be put back). Full-screen viewers stay dark.
+// Skins. src/inject/skins.css keys off html[data-mc-skin][data-mc-mode].
+// Facebook marks its modes with __fb-light-mode / __fb-dark-mode classes on
+// <html> and on many containers inside the page. A skin other than Messenger
+// pins all of them to its mode (Yahoo and Zalo: light; Viber and Telegram:
+// the app's color mode), whatever Facebook's own dark mode setting is. The
+// swapped ones are tagged data-mc-was-dark / data-mc-was-light so they can be
+// put back. Full-screen viewers stay dark.
 // ---------------------------------------------------------------------------
 const DARK = '__fb-dark-mode';
 const LIGHT = '__fb-light-mode';
 let skinObserver = null;
+let pinnedMode = null;
 
 function inFullScreenOverlay(el) {
   const d = el.closest('[role="dialog"], [aria-modal="true"]');
@@ -36,10 +42,16 @@ function inFullScreenOverlay(el) {
   return r.width >= innerWidth * 0.9 && r.height >= innerHeight * 0.9;
 }
 
-function forceLight(el) {
-  if (!el.classList.contains(DARK) || inFullScreenOverlay(el)) return;
-  el.classList.replace(DARK, LIGHT);
-  el.setAttribute('data-mc-was-dark', '');
+function pin(el) {
+  if (mode === 'light') {
+    if (!el.classList.contains(DARK) || inFullScreenOverlay(el)) return;
+    el.classList.replace(DARK, LIGHT);
+    el.setAttribute('data-mc-was-dark', '');
+  } else if (mode === 'dark') {
+    if (!el.classList.contains(LIGHT)) return;
+    el.classList.replace(LIGHT, DARK);
+    el.setAttribute('data-mc-was-light', '');
+  }
 }
 
 function restoreDark(el) {
@@ -47,18 +59,29 @@ function restoreDark(el) {
   el.removeAttribute('data-mc-was-dark');
 }
 
+function restoreLight(el) {
+  el.classList.replace(DARK, LIGHT);
+  el.removeAttribute('data-mc-was-light');
+}
+
+function unpinAll() {
+  for (const el of document.querySelectorAll('[data-mc-was-dark]')) restoreDark(el);
+  for (const el of document.querySelectorAll('[data-mc-was-light]')) restoreLight(el);
+}
+
 function onSkinMutations(records) {
-  if (skin === 'messenger') return;
+  if (!mode) return;
+  const other = '.' + (mode === 'light' ? DARK : LIGHT);
   let added = false;
   for (const r of records) {
     if (r.type === 'attributes') {
-      forceLight(r.target);
+      pin(r.target);
     } else {
       for (const n of r.addedNodes) {
         if (n.nodeType !== 1) continue;
         added = true;
-        forceLight(n);
-        for (const el of n.querySelectorAll('.' + DARK)) forceLight(el);
+        pin(n);
+        for (const el of n.querySelectorAll(other)) pin(el);
       }
     }
   }
@@ -69,15 +92,20 @@ function syncSkin() {
   const html = document.documentElement;
   if (!html) return;
   if (html.dataset.mcSkin !== skin) html.dataset.mcSkin = skin;
+  if (mode) html.dataset.mcMode = mode;
+  else delete html.dataset.mcMode;
 
-  if (skin === 'messenger') {
+  if (pinnedMode !== mode) {
+    unpinAll();
+    pinnedMode = mode;
+  }
+  if (!mode) {
     skinObserver?.disconnect();
     skinObserver = null;
-    for (const el of document.querySelectorAll('[data-mc-was-dark]')) restoreDark(el);
     return;
   }
-  forceLight(html);
-  for (const el of document.querySelectorAll('.' + DARK)) forceLight(el);
+  pin(html);
+  for (const el of document.querySelectorAll('.' + (mode === 'light' ? DARK : LIGHT))) pin(el);
   if (!skinObserver) {
     skinObserver = new MutationObserver(onSkinMutations);
     skinObserver.observe(html, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
@@ -87,7 +115,7 @@ function syncSkin() {
 // Viewers get laid out after they're inserted; put them back to dark once
 // they turn out to be full-screen.
 function keepViewersDark() {
-  if (skin === 'messenger') return;
+  if (mode !== 'light') return;
   for (const el of document.querySelectorAll('[data-mc-was-dark]')) {
     if (inFullScreenOverlay(el)) restoreDark(el);
   }

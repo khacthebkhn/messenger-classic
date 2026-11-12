@@ -17,6 +17,21 @@ and run it. Installing over an older version keeps your login and settings.
 The builds aren't code-signed, so Windows SmartScreen will warn you the first
 time. Click **More info → Run anyway**.
 
+## Updates
+
+From 1.3.0 the app checks for a new version when it starts and every 6 hours.
+When one is out, it asks you first:
+
+- **Install now** downloads the update, closes the app, installs it and opens
+  the app again. Your logins and settings stay. If you're in a call, it waits
+  until the call ends.
+- **Later** asks again at the next check.
+- **Skip this version** stops asking about that version.
+
+You can also check yourself under **Preferences → Check for updates…**, or turn
+off **Check for updates automatically** there. The portable `.exe` can't
+update itself, so it opens the download page instead.
+
 `npm run dist` also builds a single-file portable `.exe`, but Windows may not
 show its notifications because it has no Start menu shortcut.
 
@@ -36,8 +51,9 @@ show its notifications because it has no Start menu shortcut.
   (comments, reactions, friend requests), and Facebook's notification pop-ups
   are closed before they show.
 - Several Facebook accounts, switched in one click without logging in again.
-- Three themes: **Messenger**, **Yahoo** and **Zalo**. Pick one with the
-  palette button in the sidebar, or under Preferences → Theme.
+- Five themes: **Messenger**, **Yahoo**, **Zalo**, **Viber** and
+  **Telegram**. Pick one with the palette button in the sidebar, or under
+  Preferences → Theme.
 - With the Messenger theme, the title bar and sidebar take their colors from
   Facebook's page, so light and dark mode always match.
 - Video and voice calls, including screen sharing (you pick a screen or
@@ -89,11 +105,15 @@ Logging into an account that is already added just switches to it.
 | Messenger | Facebook's own colors, in light or dark mode, including each chat's theme |
 | Yahoo | Purple title bar and sidebar with yellow highlights, Tahoma text, square-cornered bubbles on white |
 | Zalo | Blue sidebar, white panels, light-blue selected chat and your own bubbles, gray-blue chat background |
+| Viber | Purple title bar, lavender selected chat and your own bubbles, rounded bubbles. Dark: deep gray-violet with purple bubbles |
+| Telegram | Steel-blue title bar, green chat background, pale-green bubbles for your messages. Dark: Telegram's night blue |
 
-Yahoo and Zalo are light-only themes. While one is on, the app turns
-Facebook's page light and replaces each chat's own theme (gradients and
-wallpapers) with the Yahoo or Zalo colors. Switch back to Messenger to get
-them back.
+Yahoo and Zalo are light only. Viber and Telegram have a light and a dark
+look and follow **Preferences → Color mode** (Use system setting, Light or
+Dark), whatever Facebook's own dark mode setting is. While one of these four
+is on, the app turns Facebook's page to the theme's mode and replaces each
+chat's own theme (gradients and wallpapers) with the theme's colors. Switch
+back to Messenger to get them back.
 
 The themes only change Facebook's color variables, so they keep working when
 Facebook renames its CSS classes. The colors are in `src/skins.js` (title bar
@@ -129,6 +149,19 @@ node test/mock-server.js
 # in a second terminal (PowerShell: $env:MESSENGER_URL="..."; npm start)
 MESSENGER_URL=http://localhost:8123/messages/ MC_DEBUG=1 npm start
 ```
+
+### Publish a release
+
+The app finds updates through `latest.yml` on the newest GitHub release, so
+every release needs these three files from `dist/`:
+
+- `MessengerClassic-Setup-<version>.exe`
+- `MessengerClassic-Setup-<version>.exe.blockmap`
+- `latest.yml`
+
+To try an update before publishing, put those files in a folder, serve it
+over HTTP and start an older installed build with
+`MC_UPDATE_URL=http://localhost:8765/`.
 
 ## How it works
 

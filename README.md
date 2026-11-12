@@ -1,7 +1,7 @@
 # Messenger Classic
 
-A Windows desktop app for Facebook Messenger that looks like messenger.com did
-before it closed in April 2026. You only see your chats: no feed, no Facebook
+A desktop app for Windows and Mac (Apple Silicon) for Facebook Messenger
+that looks like messenger.com did before it closed in April 2026. You only see your chats: no feed, no Facebook
 top bar, no Watch or Marketplace tabs.
 
 It runs Facebook's own web Messenger (`facebook.com/messages`) and changes how
@@ -17,6 +17,27 @@ and run it. Installing over an older version keeps your login and settings.
 The builds aren't code-signed, so Windows SmartScreen will warn you the first
 time. Click **More info → Run anyway**.
 
+### Mac
+
+For Macs with Apple Silicon (M1 or newer). Download
+`MessengerClassic-<version>-mac-arm64.dmg`, open it and drag **Messenger
+Classic** to Applications.
+
+The Mac app isn't signed with an Apple Developer ID, so the first time macOS
+says it can't check it for malicious software:
+
+1. Open the app once and close the warning.
+2. Open **System Settings → Privacy & Security**, scroll down and click
+   **Open Anyway** next to Messenger Classic, then confirm.
+
+After that it opens normally. macOS asks once for the camera and microphone
+the first time you make a call, and for screen recording the first time you
+share your screen.
+
+On a Mac the window buttons sit in the title bar, the app has a normal menu
+bar (Edit, View, Window), the unread count shows on the Dock icon and next to
+the menu bar icon, and the shortcuts below use Cmd instead of Ctrl.
+
 ## Updates
 
 From 1.3.0 the app checks for a new version when it starts and every 6 hours.
@@ -29,8 +50,9 @@ When one is out, it asks you first:
 - **Skip this version** stops asking about that version.
 
 You can also check yourself under **Preferences → Check for updates…**, or turn
-off **Check for updates automatically** there. The portable `.exe` can't
-update itself, so it opens the download page instead.
+off **Check for updates automatically** there. The portable `.exe` and the
+Mac app can't update themselves (macOS only allows that for signed apps), so
+they tell you about the new version and open the download page instead.
 
 `npm run dist` also builds a single-file portable `.exe`, but Windows may not
 show its notifications because it has no Start menu shortcut.
@@ -137,7 +159,14 @@ You need Node.js 20 or newer.
 npm install
 npm start          # run the app
 npm run dist       # build the installer and portable .exe into dist/
+npm run dist:mac   # on a Mac: build the .dmg and .zip (Apple Silicon)
 ```
+
+The Mac app can only be built on a Mac. The **Build Mac app** workflow
+(`.github/workflows/build-mac.yml`, run it from the repo's Actions tab) builds
+it on GitHub's macOS machines, tests it against the mock page and keeps the
+files as a download. Give it a release tag to attach the files to that
+release.
 
 ### Test without a Facebook account
 
@@ -158,6 +187,10 @@ every release needs these three files from `dist/`:
 - `MessengerClassic-Setup-<version>.exe`
 - `MessengerClassic-Setup-<version>.exe.blockmap`
 - `latest.yml`
+
+and, for Macs, the files from the **Build Mac app** workflow:
+`MessengerClassic-<version>-mac-arm64.dmg`, the `.zip`, the `.blockmap` files
+and `latest-mac.yml`.
 
 To try an update before publishing, put those files in a folder, serve it
 over HTTP and start an older installed build with

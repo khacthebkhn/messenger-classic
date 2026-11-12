@@ -1,8 +1,11 @@
 'use strict';
 // Updates. The app checks the GitHub releases for a newer version (each
-// release carries a latest.yml next to the installer). Nothing is downloaded
-// until you agree; then the installer is downloaded, checked against the
-// SHA-512 in latest.yml, run silently, and the app starts again by itself.
+// release carries a latest.yml next to the Windows installer and a
+// latest-mac.yml next to the Mac app). Nothing is downloaded until you agree;
+// then on Windows the installer is downloaded, checked against the SHA-512 in
+// latest.yml, run silently, and the app starts again by itself. macOS only
+// lets signed apps replace themselves, and the portable .exe has nothing to
+// install, so those open the download page instead.
 const { app, dialog, shell } = require('electron');
 
 const RELEASES_URL = 'https://github.com/khacthebkhn/messenger-classic/releases/latest';
@@ -42,6 +45,7 @@ function createUpdater({ getWindow, store, beforeQuit, isBusy, onStatus, debug }
   let timer = null;
 
   const portable = Boolean(process.env.PORTABLE_EXECUTABLE_FILE);
+  const downloadPage = portable || process.platform === 'darwin';
   // MC_UPDATE_URL points the app at a folder with latest.yml (for testing).
   const testFeed = process.env.MC_UPDATE_URL;
   const enabled = app.isPackaged || Boolean(testFeed);
@@ -135,7 +139,7 @@ function createUpdater({ getWindow, store, beforeQuit, isBusy, onStatus, debug }
   async function offer(info, manual) {
     if (state !== 'idle') return;
     const notes = plainText(info.releaseNotes);
-    const buttons = portable ? ['Open download page', 'Later'] : ['Install now', 'Later'];
+    const buttons = downloadPage ? ['Open download page', 'Later'] : ['Install now', 'Later'];
     if (!manual) buttons.push('Skip this version');
     const { response } = await message({
       type: 'info',
@@ -143,7 +147,7 @@ function createUpdater({ getWindow, store, beforeQuit, isBusy, onStatus, debug }
       detail: [
         `You have ${app.getVersion()}.`,
         notes,
-        portable ? '' : 'The app closes, installs the update and opens again. Your logins and settings stay.',
+        downloadPage ? '' : 'The app closes, installs the update and opens again. Your logins and settings stay.',
       ].filter(Boolean).join('\n\n'),
       buttons,
       defaultId: 0,
@@ -154,7 +158,7 @@ function createUpdater({ getWindow, store, beforeQuit, isBusy, onStatus, debug }
       return;
     }
     if (response !== 0) return;
-    if (portable) {
+    if (downloadPage) {
       shell.openExternal(RELEASES_URL);
       return;
     }

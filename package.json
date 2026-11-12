@@ -1,7 +1,7 @@
 {
   "name": "messenger-classic",
   "productName": "Messenger Classic",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Desktop Messenger with the late messenger.com look, without the rest of Facebook",
   "main": "src/main.js",
   "license": "MIT",
@@ -9,7 +9,8 @@
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --win --dir --publish never",
-    "dist": "electron-builder --win --publish never"
+    "dist": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --arm64 --publish never"
   },
   "devDependencies": {
     "electron": "45.2.3",
@@ -54,6 +55,36 @@
     },
     "portable": {
       "artifactName": "MessengerClassic-${version}-portable.exe"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.social-networking",
+      "icon": "assets/icon.png",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "darkModeSupport": true,
+      "artifactName": "MessengerClassic-${version}-mac-${arch}.${ext}",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Messenger Classic uses the camera for video calls.",
+        "NSMicrophoneUsageDescription": "Messenger Classic uses the microphone for calls and voice messages."
+      }
+    },
+    "dmg": {
+      "artifactName": "MessengerClassic-${version}-mac-${arch}.${ext}"
     },
     "publish": [
       {

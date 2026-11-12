@@ -47,6 +47,10 @@ body[data-skin="yahoo"] { font-family: Tahoma, Verdana, "Segoe UI", sans-serif; 
   -webkit-app-region: drag;
   transition: background 160ms ease;
 }
+/* macOS: leave room for the window buttons (red, yellow, green) at the left. */
+body[data-platform="darwin"] .titlebar {
+  padding-left: calc(max(var(--title-pad), 72px) + 12px);
+}
 /* Zalo: the blue sidebar runs up through the title bar. */
 .titlebar::before {
   content: "";

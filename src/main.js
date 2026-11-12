@@ -2,6 +2,7 @@
 const {
   app, BaseWindow, WebContentsView, Menu, Tray, nativeTheme, nativeImage,
   shell, ipcMain, session, dialog, desktopCapturer, screen, clipboard, net,
+  systemPreferences,
 } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -38,12 +39,16 @@ const AUTH_PATHS = [
   /^\/device-based/, /^\/confirmemail/, /^\/security/, /^\/ajax/, /^\/r\.php/, /^\/reg/,
 ];
 
+const IS_MAC = process.platform === 'darwin';
 const TITLE_H = 32;
+// macOS draws its window buttons (red, yellow, green) at the left of our title bar.
+const TRAFFIC_LIGHTS = { x: 12, y: 9 };
 const RAIL_W = { collapsed: 72, expanded: 240 };
 const debug = (...args) => process.env.MC_DEBUG && console.log('[mc]', ...args);
 
 const ASSETS = path.join(__dirname, '..', 'assets');
 const ICON = path.join(ASSETS, process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+const LOGIN_LABEL = IS_MAC ? 'Open at login' : 'Start with Windows';
 const SHELL_HTML = path.join(__dirname, 'shell', 'shell.html');
 const OFFLINE_HTML = path.join(__dirname, 'shell', 'offline.html');
 const BASE_CSS = path.join(__dirname, 'inject', 'messenger.css');
@@ -105,7 +110,8 @@ function chromeUserAgent() {
 
 async function init() {
   nativeTheme.themeSource = effectiveThemeSource();
-  Menu.setApplicationMenu(null);
+  // Windows: no menu bar. macOS needs an app menu, or Cmd+C/V/Q don't work.
+  Menu.setApplicationMenu(IS_MAC ? Menu.buildFromTemplate(macMenuTemplate()) : null);
 
   loadAccounts();
   removeUnusedPartitions();
@@ -509,7 +515,9 @@ function createWindow() {
     show: false,
     backgroundColor: t.windowBg,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: t.overlay, symbolColor: t.overlaySymbol, height: TITLE_H },
+    ...(IS_MAC
+      ? { trafficLightPosition: TRAFFIC_LIGHTS }
+      : { titleBarOverlay: { color: t.overlay, symbolColor: t.overlaySymbol, height: TITLE_H } }),
   });
 
   const shellPrefs = {
@@ -634,6 +642,9 @@ app.on('before-quit', () => {
   quitting = true;
   store.flush();
 });
+
+// macOS: clicking the Dock icon brings the window back.
+app.on('activate', () => showWindow());
 
 app.on('window-all-closed', () => {
   if (quitting || !tray) app.quit();
@@ -838,6 +849,14 @@ function setupPermissions(ses) {
   ses.setPermissionRequestHandler((wc, permission, callback, details) => {
     if (!isFacebookUrl(details.requestingUrl || wc.getURL())) return callback(false);
     if (permission === 'notifications') return callback(Boolean(store.get('notifications')));
+    if (permission === 'media' && IS_MAC) {
+      // macOS asks you once per app for the camera and the microphone.
+      const kinds = (details.mediaTypes || []).map((t) => ({ audio: 'microphone', video: 'camera' })[t]).filter(Boolean);
+      Promise.all(kinds.map((k) => systemPreferences.askForMediaAccess(k)))
+        .then((ok) => callback(ok.every(Boolean)))
+        .catch(() => callback(false));
+      return;
+    }
     callback(ALLOWED_PERMISSIONS.has(permission));
   });
   ses.setPermissionCheckHandler((_wc, permission, origin) => {
@@ -961,6 +980,51 @@ function handleShortcut(e, input) {
 }
 
 // ---------------------------------------------------------------------------
+// macOS app menu. The shortcuts the app handles itself (handleShortcut) run
+// first; the menu adds the standard ones (copy, paste, hide, minimize).
+// ---------------------------------------------------------------------------
+function macMenuTemplate() {
+  return [
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { label: 'Check for Updates…', click: () => updater?.check({ manual: true }) },
+        { type: 'separator' },
+        { label: 'Preferences…', accelerator: 'Cmd+,', click: () => popupSettings() },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { label: `Quit ${app.name}`, accelerator: 'Cmd+Q', click: quit },
+      ],
+    },
+    { role: 'editMenu' },
+    {
+      label: 'View',
+      submenu: [
+        { label: 'Chats', accelerator: 'Cmd+1', click: () => goTo('chats') },
+        { label: 'Requests', accelerator: 'Cmd+2', click: () => goTo('requests') },
+        { label: 'Archive', accelerator: 'Cmd+3', click: () => goTo('archived') },
+        { label: 'New Message', accelerator: 'Cmd+N', click: () => goTo('compose') },
+        { type: 'separator' },
+        { label: 'Reload', accelerator: 'Cmd+R', click: () => activeView()?.webContents.reload() },
+        { label: 'Show Facebook Bar', accelerator: 'Cmd+Shift+B', click: toggleFacebookBar },
+        { type: 'separator' },
+        { label: 'Zoom In', accelerator: 'Cmd+=', click: () => setZoom(0.1) },
+        { label: 'Zoom Out', accelerator: 'Cmd+-', click: () => setZoom(-0.1) },
+        { label: 'Actual Size', accelerator: 'Cmd+0', click: () => setZoom(0) },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+        { label: 'Developer Tools', accelerator: 'Alt+Cmd+I', click: () => activeView()?.webContents.toggleDevTools() },
+      ],
+    },
+    { role: 'windowMenu' },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
 function settingsTemplate() {
@@ -982,8 +1046,8 @@ function settingsTemplate() {
     { type: 'separator' },
     { label: 'Desktop notifications', type: 'checkbox', checked: store.get('notifications'), click: (i) => { store.set('notifications', i.checked); sendFbSettings(); } },
     { label: 'Keep other accounts running', type: 'checkbox', checked: store.get('keepAccountsRunning'), click: (i) => setKeepAccountsRunning(i.checked) },
-    { label: 'Close to tray', type: 'checkbox', checked: store.get('closeToTray'), click: (i) => store.set('closeToTray', i.checked) },
-    { label: 'Start with Windows', type: 'checkbox', checked: store.get('launchAtLogin'), click: (i) => setLaunchAtLogin(i.checked) },
+    { label: IS_MAC ? 'Keep running when closed' : 'Close to tray', type: 'checkbox', checked: store.get('closeToTray'), click: (i) => store.set('closeToTray', i.checked) },
+    { label: LOGIN_LABEL, type: 'checkbox', checked: store.get('launchAtLogin'), click: (i) => setLaunchAtLogin(i.checked) },
     {
       label: 'Zoom',
       submenu: [
@@ -1129,9 +1193,11 @@ function sendFbSettings() {
 function applyPalette() {
   if (!win) return;
   const t = shellTheme();
-  try {
-    win.setTitleBarOverlay({ color: t.overlay, symbolColor: t.overlaySymbol, height: TITLE_H });
-  } catch {}
+  if (!IS_MAC) {
+    try {
+      win.setTitleBarOverlay({ color: t.overlay, symbolColor: t.overlaySymbol, height: TITLE_H });
+    } catch {}
+  }
   win.setBackgroundColor(t.windowBg);
   for (const v of [railView, titleView]) v?.setBackgroundColor(t.windowBg);
   pushShellState();
@@ -1141,6 +1207,7 @@ function shellState() {
   const a = active();
   const total = totalUnread();
   return {
+    platform: process.platform,
     skin: currentSkin(),
     shell: shellTheme(),
     railWidth: railWidth(),
@@ -1166,12 +1233,16 @@ function pushShellState() {
 // Tray
 // ---------------------------------------------------------------------------
 function trayImage(hasUnread) {
+  // macOS menu bar: a black "template" icon that macOS tints for light and
+  // dark menu bars; the unread count is shown as text next to it.
+  if (IS_MAC) return nativeImage.createFromPath(path.join(ASSETS, 'trayTemplate.png'));
   return nativeImage.createFromPath(path.join(ASSETS, hasUnread ? 'tray-unread.png' : 'tray.png'));
 }
 
 function createTray() {
   tray = new Tray(trayImage(false));
-  tray.on('click', toggleWindow);
+  // macOS opens the menu on click, like other menu bar icons.
+  if (!IS_MAC) tray.on('click', toggleWindow);
   updateTray();
 }
 
@@ -1179,6 +1250,7 @@ function updateTray() {
   if (!tray) return;
   const total = totalUnread();
   tray.setImage(trayImage(total > 0));
+  if (IS_MAC) tray.setTitle(total ? String(total) : '');
   const status = updater?.statusText();
   tray.setToolTip([total ? `Messenger: ${total} unread` : 'Messenger', status].filter(Boolean).join('\n'));
   const list = accounts.size > 1 ? [...accounts.values()].map((a) => ({
@@ -1191,7 +1263,7 @@ function updateTray() {
     { label: 'Open Messenger', click: showWindow },
     ...(list.length ? [{ type: 'separator' }, ...list] : []),
     { type: 'separator' },
-    { label: 'Start with Windows', type: 'checkbox', checked: store.get('launchAtLogin'), click: (i) => setLaunchAtLogin(i.checked) },
+    { label: LOGIN_LABEL, type: 'checkbox', checked: store.get('launchAtLogin'), click: (i) => setLaunchAtLogin(i.checked) },
     updater?.menuItems()[0] || { label: 'Check for updates…', enabled: false },
     { label: 'Quit', click: quit },
   ]));
@@ -1289,6 +1361,10 @@ function registerIpc() {
     pushShellState();
   });
   ipcMain.on('shell:badge', (_e, { dataUrl, count }) => {
+    if (IS_MAC) {
+      app.dock?.setBadge(count ? (count > 99 ? '99+' : String(count)) : '');
+      return;
+    }
     if (!win || process.platform !== 'win32') return;
     const img = count && dataUrl ? nativeImage.createFromDataURL(dataUrl) : null;
     win.setOverlayIcon(img, count ? `${count} unread` : '');

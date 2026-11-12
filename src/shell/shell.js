@@ -31,6 +31,7 @@ function applyState(s) {
   }
   root.setProperty('--title-pad', t.joinRail ? `${s.railWidth || 0}px` : '0px');
   document.body.dataset.skin = s.skin || 'messenger';
+  document.body.dataset.platform = s.platform || '';
   document.body.classList.toggle('dark', Boolean(t.dark));
   document.body.classList.toggle('collapsed', Boolean(s.collapsed));
 

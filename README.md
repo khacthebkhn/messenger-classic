@@ -14,8 +14,11 @@ affiliated with Meta.
 Download `MessengerClassic-Setup-<version>.exe` from the repo's Releases page
 and run it. Installing over an older version keeps your login and settings.
 
-The builds aren't code-signed, so Windows SmartScreen will warn you the first
-time. Click **More info → Run anyway**.
+Windows SmartScreen may warn you the first time you run a downloaded
+installer. Click **More info → Run anyway**. Signed builds (see
+[Code signing policy](#code-signing-policy)) show their publisher there, and
+the warning goes away once the publisher has enough download history. Updates
+installed by the app don't show it.
 
 ### Mac
 
@@ -181,6 +184,28 @@ MESSENGER_URL=http://localhost:8123/messages/ MC_DEBUG=1 npm start
 
 ### Publish a release
 
+Windows builds come from the **Build Windows app** workflow
+(`.github/workflows/build-windows.yml`, run it from the Actions tab). It
+builds the app folder, has SignPath sign `MessengerClassic.exe`, builds the
+installer from that folder, has SignPath sign the installer, then rebuilds
+the `.blockmap` and `latest.yml` for the signed installer
+(`scripts/finish-installer.js`). Each signing request waits until an approver
+approves it on signpath.io. Without the SignPath settings below it builds an
+unsigned installer.
+
+SignPath settings, in the repo's **Settings → Secrets and variables →
+Actions**:
+
+- secret `SIGNPATH_API_TOKEN`: API token of a SignPath user who can submit
+  signing requests
+- variable `SIGNPATH_ORGANIZATION_ID`
+- optional variables `SIGNPATH_PROJECT_SLUG` (default `messenger-classic`)
+  and `SIGNPATH_SIGNING_POLICY` (default `release-signing`)
+
+The SignPath project needs two artifact configurations, `app` and
+`installer`, with the contents of `signpath/app.xml` and
+`signpath/installer.xml`.
+
 The app finds updates through `latest.yml` on the newest GitHub release, so
 every release needs these three files from `dist/`:
 
@@ -226,6 +251,34 @@ classes. The app only needs the `role="banner"` attribute, which Facebook
 keeps for accessibility. When a full-screen viewer (such as the photo viewer)
 covers the bar, the app moves the page back so the viewer's close button can be
 clicked.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/),
+certificate by [SignPath Foundation](https://signpath.org/).
+
+Only files built by this repository's GitHub Actions workflows from its own
+source are signed. Each signing request is approved by hand.
+
+Team roles:
+
+- Committers and reviewers: [khacthebkhn](https://github.com/khacthebkhn)
+- Approvers: [khacthebkhn](https://github.com/khacthebkhn)
+
+Everyone with commit or signing access uses multi-factor authentication.
+
+### Privacy policy
+
+This program will not transfer any information to other networked systems
+unless specifically requested by the user or the person installing or
+operating it. It only connects to:
+
+- facebook.com and Facebook's servers, which you sign in to and use for your
+  chats, as in a browser
+- github.com, to check for and download updates of this app. Turn this off
+  under **Preferences → Check for updates automatically**.
+
+The app keeps your settings and Facebook sign-ins on your computer only.
 
 ## If something looks off
 

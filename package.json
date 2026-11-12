@@ -5,6 +5,7 @@
   "description": "Desktop Messenger with the late messenger.com look, without the rest of Facebook",
   "main": "src/main.js",
   "license": "MIT",
+  "author": "khacthebkhn",
   "private": true,
   "scripts": {
     "start": "electron .",
@@ -19,6 +20,7 @@
   "build": {
     "appId": "app.messengerclassic.desktop",
     "productName": "Messenger Classic",
+    "copyright": "Copyright © 2026 khacthebkhn",
     "executableName": "MessengerClassic",
     "files": [
       "src/**/*",

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration "app": the app's MessengerClassic.exe,
+     uploaded by the Build Windows app workflow (a ZIP with that one file). -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="MessengerClassic.exe" product-name="Messenger Classic">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

@@ -16,7 +16,8 @@ permissions:
 
 jobs:
   mac:
-    runs-on: macos-14
+    # Apple Silicon. macos-latest follows GitHub when it retires old macOS images.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 

@@ -33,8 +33,11 @@ jobs:
 
       - name: Show the signature
         run: |
-          codesign -dv --verbose=2 "dist/mac-arm64/Messenger Classic.app" 2>&1 | head -20
-          codesign --verify --deep --strict "dist/mac-arm64/Messenger Classic.app" && echo "signature OK"
+          APP=$(ls -d dist/mac-arm64/*.app | head -1)
+          echo "app: $APP"
+          codesign -dv --verbose=2 "$APP" 2>&1 | head -20
+          codesign --verify --deep --strict "$APP"
+          echo "signature OK"
           ls -la dist
 
       - name: Smoke test against the mock page
@@ -44,8 +47,10 @@ jobs:
           mkdir -p "$SETTINGS"
           echo '{ "autoCheckUpdates": false, "bounds": { "x": 0, "y": 0, "width": 1280, "height": 800 } }' > "$SETTINGS/settings.json"
           node test/mock-server.js > mock.log 2>&1 &
+          APP=$(ls -d dist/mac-arm64/*.app | head -1)
+          EXE=$(ls "$APP"/Contents/MacOS/* | head -1)
           MESSENGER_URL=http://localhost:8123/messages/t/1/ MC_DEBUG=1 \
-            "dist/mac-arm64/Messenger Classic.app/Contents/MacOS/Messenger Classic" --remote-debugging-port=9222 > app.log 2>&1 &
+            "$EXE" --remote-debugging-port=9222 > app.log 2>&1 &
           sleep 15
           mkdir -p smoke
           screencapture -x smoke/screen.png || true

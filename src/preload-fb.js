@@ -144,6 +144,158 @@ try {
 }
 
 // ---------------------------------------------------------------------------
+// Unread chats. Facebook's title count is unread chats plus Facebook
+// notifications ("(3) Messenger | Facebook" can be 3 notifications and no
+// chats), so the Facebook part is taken off again:
+// - where Facebook's top bar has a Messenger button ("Messenger, 2 unread";
+//   its label names Messenger in every language), its count is used;
+// - on /messages it has none, so the count on the other top-bar buttons
+//   (Notifications) is taken off the title count.
+// Between counts, the title blinks "Anna messaged you", which is skipped.
+// ---------------------------------------------------------------------------
+const MESSENGER_BUTTON = /\bMessenger\b|^Messaging\b/;
+const BRAND = /Messenger|Facebook/;
+const TITLE_COUNT = /^\((\d+)\+?\)/;
+
+// The red badge on a top-bar button: <span aria-hidden="true">3</span>,
+// "20+" when there are more. The label carries the exact number.
+function badgeCount(button) {
+  for (const s of button.querySelectorAll('span[aria-hidden="true"]')) {
+    const m = /^(\d+)(\+?)$/.exec(s.textContent.trim());
+    if (!m) continue;
+    const label = /\d+/.exec(button.getAttribute('aria-label') || '');
+    return m[2] && label ? Math.max(Number(m[1]), Number(label[0])) : Number(m[1]);
+  }
+  return 0;
+}
+
+function topBarButtons(banner) {
+  // Pop-ups such as the notifications list are drawn inside the bar too.
+  return [...banner.querySelectorAll('[role="button"][aria-label], a[aria-label]')]
+    .filter((el) => !el.closest('[role="dialog"]'));
+}
+
+let titleTotal = null;
+let titleSeenAt = 0;
+function readTitleTotal() {
+  const t = document.title;
+  const now = performance.now();
+  const m = TITLE_COUNT.exec(t);
+  if (m) {
+    titleTotal = Number(m[1]);
+    titleSeenAt = now;
+  } else if (BRAND.test(t) || now - titleSeenAt > 4000) {
+    // No count: nothing unread. Blinks never last 4 s.
+    titleTotal = 0;
+    titleSeenAt = now;
+  }
+  return titleTotal;
+}
+
+function messengerUnread() {
+  const total = readTitleTotal();
+  const banner = document.querySelector('div[role="banner"]');
+  if (!banner) return null;
+  const buttons = topBarButtons(banner);
+  if (!buttons.length) return null; // bar not drawn yet
+  const messenger = buttons.find((el) => MESSENGER_BUTTON.test(el.getAttribute('aria-label')));
+  if (messenger) {
+    const label = /\d+/.exec(messenger.getAttribute('aria-label'));
+    return label ? Number(label[0]) : badgeCount(messenger);
+  }
+  if (total === null) return null;
+  // The bar's buttons (Menu, Notifications, Account); the links in the
+  // middle (Home, Marketplace...) have counts the title doesn't include.
+  let notifications = 0;
+  for (const el of buttons) {
+    if (el.matches('[role="button"]')) notifications = Math.max(notifications, badgeCount(el));
+  }
+  return Math.max(0, total - notifications);
+}
+
+// The bar is drawn a moment after the page; only give up on it (and let the
+// app use the title as it is) when it has been missing for a while. A rise is
+// only sent once it holds for two reads, so a title that changes a moment
+// before the badges never counts a Facebook notification as a chat.
+const MISSING_GRACE = 8000;
+const RISE_HOLD = 600;
+let lastUnread;
+let missingSince = 0;
+let rising = null;
+function reportUnread() {
+  let n = null;
+  try {
+    n = messengerUnread();
+  } catch {}
+  const now = performance.now();
+  if (n === null) {
+    missingSince ||= now;
+    if (now - missingSince < MISSING_GRACE) return;
+  } else {
+    missingSince = 0;
+  }
+  if (n === lastUnread) {
+    rising = null;
+    return;
+  }
+  if (n !== null && typeof lastUnread === 'number' && n > lastUnread) {
+    if (!rising || rising.n !== n) {
+      rising = { n, at: now };
+      setTimeout(reportUnread, RISE_HOLD + 50);
+      return;
+    }
+    if (now - rising.at < RISE_HOLD) return;
+  }
+  rising = null;
+  lastUnread = n;
+  ipcRenderer.send('fb:unread', n);
+}
+
+// ---------------------------------------------------------------------------
+// Facebook notification pop-ups. Facebook shows new notifications (comments,
+// reactions, friend requests...) as cards in the bottom-left corner of every
+// page, /messages too. Such a card is a role="complementary" toast holding a
+// notification row (role="listitem"), in a fixed list Facebook adds to
+// <body>. Messenger's own toasts look different and are left alone.
+// ---------------------------------------------------------------------------
+function isFacebookNotificationToast(card) {
+  if (!card.hasAttribute('aria-labelledby') || !card.querySelector('[role="listitem"]')) return false;
+  if (card.closest('[role="main"], [role="banner"], [role="navigation"], [role="dialog"]')) return false;
+  const item = card.closest('li');
+  if (!item || item.parentElement?.tagName !== 'UL') return false;
+  for (let el = item.parentElement; el && el !== document.body; el = el.parentElement) {
+    if (getComputedStyle(el).position === 'fixed') return true;
+  }
+  return false;
+}
+
+function closeFacebookToasts() {
+  for (const card of document.querySelectorAll('[role="complementary"]')) {
+    if (card.hasAttribute('data-mc-closed') || !isFacebookNotificationToast(card)) continue;
+    card.setAttribute('data-mc-closed', '');
+    card.closest('li').style.setProperty('display', 'none', 'important');
+    // Press its close button too, so it leaves Facebook's toast queue now
+    // instead of holding back the next toast until it expires.
+    card.firstElementChild?.querySelector('[role="button"]')?.click();
+    ipcRenderer.send('fb:toast-closed');
+  }
+}
+
+let toastCheckQueued = false;
+function queueToastCheck() {
+  if (toastCheckQueued) return;
+  toastCheckQueued = true;
+  // Before the next paint, so the card never shows. Hidden pages don't
+  // paint; their cards are closed when they are shown again.
+  requestAnimationFrame(() => {
+    toastCheckQueued = false;
+    try {
+      closeFacebookToasts();
+    } catch {}
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Links: keep Messenger inside the app, send everything else to the browser.
 // ---------------------------------------------------------------------------
 function onLinkClick(e) {
@@ -403,6 +555,16 @@ function scheduleReport() {
 window.addEventListener('DOMContentLoaded', () => {
   scheduleReport();
   setInterval(scheduleReport, 1000);
+  // Timers keep running for accounts in the background (no rAF there).
+  reportUnread();
+  setInterval(reportUnread, 1000);
+  // Facebook changes the title whenever a count changes; read the badge then.
+  let unreadTimer = null;
+  new MutationObserver(() => {
+    if (unreadTimer) return;
+    unreadTimer = setTimeout(() => { unreadTimer = null; reportUnread(); }, 50);
+  }).observe(document.head, { subtree: true, childList: true, characterData: true });
+  new MutationObserver(queueToastCheck).observe(document.body, { subtree: true, childList: true });
   window.addEventListener('resize', scheduleReport);
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => setTimeout(scheduleReport, 300));
   new MutationObserver(scheduleReport).observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });

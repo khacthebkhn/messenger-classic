@@ -32,6 +32,9 @@ show its notifications because it has no Start menu shortcut.
 - A tray icon, an unread count on the taskbar, a flashing taskbar button for
   new messages, and Windows notifications. Click a notification to jump to
   the chat.
+- Only Messenger counts. The unread count leaves out Facebook notifications
+  (comments, reactions, friend requests), and Facebook's notification pop-ups
+  are closed before they show.
 - Several Facebook accounts, switched in one click without logging in again.
 - Three themes: **Messenger**, **Yahoo** and **Zalo**. Pick one with the
   palette button in the sidebar, or under Preferences → Theme.
@@ -143,7 +146,10 @@ MESSENGER_URL=http://localhost:8123/messages/ MC_DEBUG=1 npm start
 - `src/preload-fb.js` runs inside the Facebook page. It measures
   `div[role="banner"]` (the top bar), checks the colors in use, sends link
   clicks to the browser when needed, and connects notification clicks to the
-  window. It doesn't read your messages.
+  window. It works out the unread chats from the page title and the counts
+  on the bar's buttons, because the title adds Facebook notifications to
+  them, and closes Facebook's notification pop-ups. It doesn't read your
+  messages.
 - `src/shell/` holds the title bar and sidebar.
 - `src/skins.js` and `src/inject/skins.css` define the themes.
 - `src/inject/messenger.css` holds small style tweaks. Your `custom.css` is

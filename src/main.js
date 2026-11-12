@@ -133,6 +133,8 @@ function makeAccount(saved) {
     view: null,
     loggedIn: false,
     unread: 0,
+    badgeUnread: undefined, // unread chats sent by the page; null: it couldn't tell
+    lastTitle: '',
     palette: null,
     metrics: { banner: null, overlay: false },
     onMessagesPage: false,
@@ -281,6 +283,8 @@ function destroyView(a) {
   a.cssKeys = [];
   a.metrics = { banner: null, overlay: false };
   a.unread = 0; // no longer known once its page is closed
+  a.badgeUnread = undefined;
+  a.lastTitle = '';
 }
 
 function switchAccount(id) {
@@ -726,14 +730,24 @@ function routeChanged(a, url) {
   if (a.id === activeId) pushShellState();
 }
 
+// Facebook's title count ("(3) Messenger | Facebook") adds Facebook
+// notifications to the unread chats, so the page works out the chats alone
+// and sends it (fb:unread, see preload-fb.js). The title is only used when
+// the page can't (badgeUnread === null).
 function updateUnreadFromTitle(a, title) {
+  a.lastTitle = title;
+  if (a.badgeUnread !== null) return;
   // "(3) Messenger | Facebook" -> 3. Titles like "Anna messaged you" flash
   // between real titles, so only trust titles that carry a count or the brand.
   const m = /^\((\d+)\+?\)/.exec(title);
   let n = null;
   if (m) n = Number(m[1]);
   else if (/messenger|facebook/i.test(title)) n = 0;
-  if (n === null || n === a.unread) return;
+  if (n !== null) setUnread(a, n);
+}
+
+function setUnread(a, n) {
+  if (n === a.unread) return;
   if (n > a.unread && win && (!win.isFocused() || a.id !== activeId)) win.flashFrame(true);
   a.unread = n;
   updateWindowTitle();
@@ -1174,6 +1188,15 @@ function registerIpc() {
     if (a && a.id !== activeId) switchAccount(a.id);
     showWindow();
   });
+  ipcMain.on('fb:unread', (e, n) => {
+    const a = accountFor(e.sender);
+    if (!a) return;
+    a.badgeUnread = Number.isInteger(n) && n >= 0 ? n : null;
+    debug('unread', a.id, 'chats:', a.badgeUnread, 'title count:', (/^\((\d+)/.exec(a.lastTitle) || [, 0])[1]);
+    if (a.badgeUnread !== null) setUnread(a, a.badgeUnread);
+    else if (a.lastTitle) updateUnreadFromTitle(a, a.lastTitle);
+  });
+  ipcMain.on('fb:toast-closed', (e) => debug('closed a Facebook notification pop-up', accountFor(e.sender)?.id));
   ipcMain.on('fb:load', (e, route) => {
     if (accountFor(e.sender) && Object.values(ROUTES).includes(route)) e.sender.loadURL(fbUrl(route));
   });

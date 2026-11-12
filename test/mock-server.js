@@ -1,7 +1,8 @@
 'use strict';
 // A tiny stand-in for facebook.com/messages that copies the parts of its
-// structure the app relies on: a fixed role="banner" top bar, a chat list,
-// role="main", CSS colour variables, SPA navigation and l.facebook.com links.
+// structure the app relies on: a fixed role="banner" top bar with the
+// Messenger and Notifications buttons, a chat list, role="main", CSS colour
+// variables, SPA navigation, l.facebook.com links and notification pop-ups.
 // Run: node test/mock-server.js  then  MESSENGER_URL=http://localhost:8123/messages/ npm start
 const http = require('node:http');
 
@@ -11,10 +12,13 @@ const chats = ['Linh Tran', 'Minh Nguyen', 'Design team', 'Bao Pham', 'Ha Vu', '
 
 // Mock Facebook accounts. Run with MOCK_LOGIN=1 to get a login page (for
 // testing multiple accounts); otherwise everyone is logged in as 1000.
+// unread: chats, notifs: Facebook notifications. Like Facebook, the page title
+// shows the two added together. Facebook's /messages has no Messenger button
+// in its top bar; open /messages/?nojewel to get that, the default page has one.
 const USERS = {
-  1000: { name: 'Alex Morgan', unread: 3, color: '#f5a623' },
-  1001: { name: 'Linh Tran', unread: 1, color: '#10b981' },
-  1002: { name: 'Bao Pham', unread: 0, color: '#ef4444' },
+  1000: { name: 'Alex Morgan', unread: 3, notifs: 2, color: '#f5a623' },
+  1001: { name: 'Linh Tran', unread: 1, notifs: 4, color: '#10b981' },
+  1002: { name: 'Bao Pham', unread: 0, notifs: 0, color: '#ef4444' },
 };
 
 function loginPage() {
@@ -25,6 +29,13 @@ a{display:block;margin:8px 0;padding:10px;border-radius:6px;background:#0866ff;c
 <body><div class="card"><h2>Log in to Facebook</h2>
 ${Object.entries(USERS).map(([id, u]) => `<a id="login-${id}" href="/login/submit?u=${id}">Log in as ${u.name}</a>`).join('')}
 </div></body></html>`;
+}
+
+// Facebook's top-bar buttons: <div role="button" aria-label="Messenger, 3 unread">
+// with the red badge as <span aria-hidden="true">3</span>.
+function jewel(id, name, n) {
+  const badge = n ? `<span><span aria-hidden="true">${n > 20 ? '20+' : n}</span></span>` : '';
+  return `<div class="jewel" id="${id}" role="button" tabindex="0" aria-label="${n ? `${name}, ${n} unread` : name}"><svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="currentColor"/></svg>${badge}</div>`;
 }
 
 function page(path, query, uid = '1000') {
@@ -47,7 +58,7 @@ function page(path, query, uid = '1000') {
 <html class="${mode}">
 <head>
 <meta charset="utf-8">
-<title>${user.unread ? `(${user.unread}) ` : ''}Messenger | Facebook</title>
+<title>${user.unread + user.notifs ? `(${user.unread + user.notifs}) ` : ''}Messenger | Facebook</title>
 <style>
   /* Variable names and scoping copied from facebook.com/messages. */
   :root, .__fb-light-mode:root, .__fb-light-mode { --surface-background:#fff; --messenger-card-background:#fff; --web-wash:#f0f2f5; --primary-text:#080809; --secondary-text:#65686c;
@@ -84,6 +95,13 @@ function page(path, query, uid = '1000') {
   .b a { color:inherit; }
   .composer { position:relative; display:flex; gap:12px; align-items:center; padding:12px 16px; background:var(--chat-composer-background-color, transparent); color:var(--chat-composer-button-color); font-size:20px; }
   .composer div { flex:1; border-radius:20px; background:var(--chat-composer-input-background-color); padding:9px 12px; color:var(--primary-text); font-size:15px; }
+  .jewels { display:flex; gap:8px; align-items:center; }
+  .jewel { position:relative; width:40px; height:40px; border-radius:50%; background:var(--comment-background); display:grid; place-items:center; }
+  .jewel > span { position:absolute; top:-4px; right:-4px; min-width:19px; height:19px; border-radius:10px; background:#e41e3f; color:#fff; font:700 12px/19px system-ui; text-align:center; }
+  .toaster { position:fixed; left:0; right:0; bottom:0; z-index:5; pointer-events:none; }
+  .toaster ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+  .toaster li { padding:16px; pointer-events:auto; max-width:360px; }
+  .card { background:var(--surface-background); color:var(--primary-text); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.25); padding:8px 12px; }
   .viewer { position:fixed; inset:0; background:#000; z-index:10; color:#fff; display:none; }
   .viewer.open { display:block; } .viewer button { position:absolute; top:12px; left:12px; }
   .dialog-backdrop { position:fixed; inset:0; background:rgba(244,244,244,.8); z-index:9; display:none; }
@@ -92,7 +110,7 @@ function page(path, query, uid = '1000') {
 </head>
 <body>
 <div role="banner"><div class="fbbar"><span>facebook (top bar that should be hidden)</span>
-  <div role="navigation" aria-label="Account Controls and Settings"><svg id="me" width="40" height="40" aria-label="Your profile"><image href="/avatar/me.svg?u=${uid}" width="40" height="40"/></svg></div></div>
+  <div role="navigation" aria-label="Account Controls and Settings" class="jewels">${query.has('nojewel') ? '' : jewel('jewel-messenger', 'Messenger', user.unread)}${jewel('jewel-notifications', 'Notifications', user.notifs)}<svg id="me" width="40" height="40" aria-label="Your profile"><image href="/avatar/me.svg?u=${uid}" width="40" height="40"/></svg></div></div>
   <!-- Facebook draws pop-ups (notifications...) inside the banner element, below the bar. -->
   <div id="popover" style="position:fixed; top:60px; right:16px; width:340px; padding:8px; background:var(--surface-background); box-shadow:0 4px 16px rgba(0,0,0,.25); border-radius:8px; z-index:4; display:${query.has('popover') ? 'block' : 'none'}">
     ${['Ana', 'Ben', 'Chi'].map((n) => `<div style="display:flex;gap:8px;align-items:center;padding:6px"><svg width="40" height="40"><image href="/avatar/other.svg?${n}" width="40" height="40"/></svg>${n} commented</div>`).join('')}
@@ -117,6 +135,8 @@ function page(path, query, uid = '1000') {
     </div>
   </div>
 </div>
+<!-- Facebook's toaster: a fixed list it adds to <body> (see mock.toast). -->
+<div class="toaster"><ul id="toasts"></ul></div>
 <div class="viewer __fb-dark-mode" id="viewer" role="dialog"><button id="closeViewer">✕ Close viewer</button></div>
 <div class="dialog-backdrop" id="backdrop"><div role="dialog" style="background:var(--surface-background);padding:60px 120px;border-radius:8px">A modal dialog</div></div>
 <script type="application/json" data-sjs>{"require":[["ScheduledServerJS","handle",null,[{"define":[["CurrentUserInitialData",[],{"ACCOUNT_ID":"${uid}","USER_ID":"${uid}","NAME":${JSON.stringify(user.name)},"SHORT_NAME":${JSON.stringify(user.name.split(' ')[0])},"IS_MESSENGER_ONLY_USER":false},270]]}]]]}</script>
@@ -127,7 +147,7 @@ function page(path, query, uid = '1000') {
     if (!a) return;
     e.preventDefault();
     history.pushState({}, '', a.getAttribute('href'));
-    document.title = ${JSON.stringify((user.unread ? `(${user.unread}) ` : '') + 'Messenger | Facebook')};
+    setTitle();
     document.querySelectorAll('.row').forEach((r) => r.classList.toggle('sel', r === a));
   });
   photo.onclick = () => { viewer.classList.add('open'); history.pushState({}, '', '/messenger_media/?attachment_id=1'); };
@@ -135,7 +155,53 @@ function page(path, query, uid = '1000') {
   dlg.onclick = () => backdrop.classList.add('open');
   backdrop.onclick = () => backdrop.classList.remove('open');
   spa.onclick = () => history.pushState({}, '', '/watch/');
+  const counts = { unread: ${user.unread}, notifs: ${user.notifs} };
+  function setTitle() {
+    const n = counts.unread + counts.notifs;
+    document.title = (n ? '(' + n + ') ' : '') + 'Messenger | Facebook';
+  }
+  // Facebook's button labels: "Messenger" / "Messenger, 2 unread".
+  function setJewel(id, name, n) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.setAttribute('aria-label', n ? name + ', ' + n + ' unread' : name);
+    el.querySelector('span')?.remove();
+    if (n) el.insertAdjacentHTML('beforeend', '<span><span aria-hidden="true">' + (n > 20 ? '20+' : n) + '</span></span>');
+  }
+  let toastId = 0;
+  function addToast(html) {
+    const li = document.createElement('li');
+    li.innerHTML = html;
+    li.querySelector('[data-close]')?.addEventListener('click', () => li.remove());
+    document.getElementById('toasts').appendChild(li);
+    setTimeout(() => li.remove(), 8000);
+    return li;
+  }
   window.mock = {
+    // New chats or Facebook notifications arrive: the button badge and the title change.
+    setCounts: (unread, notifs) => {
+      Object.assign(counts, { unread, notifs });
+      setJewel('jewel-messenger', 'Messenger', unread);
+      setJewel('jewel-notifications', 'Notifications', notifs);
+      setTitle();
+    },
+    // A Facebook notification pop-up (CometToastNotification), like the real one.
+    toast: (text = 'Ana commented on your post.') => {
+      const id = 'toast-' + ++toastId;
+      return addToast('<div class="card"><div aria-labelledby="' + id + '" role="complementary">'
+        + '<div><div style="display:flex;justify-content:space-between"><div id="' + id + '"><h4 style="margin:4px 0">New notification</h4></div>'
+        + '<div role="button" aria-label="Close" tabindex="0" data-close>✕</div></div></div>'
+        + '<div><div role="listitem"><a href="/permalink.php?story_fbid=1&notif_id=' + toastId + '&notif_t=feedback_comment&ref=notif">' + text + '</a>'
+        + '<div role="button" aria-label="Options for this notification">…</div></div></div></div></div>').id = id;
+    },
+    // Messenger's own toast ("Message unsent"); must stay visible.
+    messengerToast: () => { addToast('<div class="card" role="alert" id="mtoast">Message unsent</div>'); },
+    // Like DocumentTitle.blink: swap in "Linh Tran messaged you" every 1.5 s.
+    blink: (on) => {
+      clearInterval(window.__blink);
+      setTitle();
+      if (on) window.__blink = setInterval(() => { if (document.title.includes('Messenger')) document.title = 'Linh Tran messaged you'; else setTitle(); }, 1500);
+    },
     popover: (on) => { document.getElementById('popover').style.display = on ? 'block' : 'none'; },
     // Facebook hands out a new signed link for the same picture now and then.
     newAvatarLink: (path) => document.querySelector('#me image').setAttribute('href', path),

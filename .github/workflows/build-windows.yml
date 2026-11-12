@@ -1,0 +1,124 @@
+# Builds the Windows installer on GitHub's Windows machines. When SignPath
+# is set up (secret SIGNPATH_API_TOKEN, variable SIGNPATH_ORGANIZATION_ID),
+# the app's .exe and then the installer are sent to SignPath for signing;
+# each request waits until it is approved on signpath.io. Without them the
+# installer is built unsigned. Give a release tag to attach the files to it.
+name: Build Windows app
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Attach the Windows files to this existing release (for example v1.3.1). Leave empty to only build.
+        required: false
+        default: ''
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      SIGNING: ${{ secrets.SIGNPATH_API_TOKEN != '' && 'true' || 'false' }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the app folder
+        run: npx electron-builder --win --dir --publish never
+
+      - name: Upload the app .exe for signing
+        if: env.SIGNING == 'true'
+        id: upload-app
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned
+          path: dist/win-unpacked/MessengerClassic.exe
+
+      - name: Sign the app .exe (approve it on signpath.io)
+        if: env.SIGNING == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'messenger-classic' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY || 'release-signing' }}
+          artifact-configuration-slug: app
+          github-artifact-id: ${{ steps.upload-app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-app
+
+      - name: Put the signed .exe back
+        if: env.SIGNING == 'true'
+        run: Copy-Item signed-app/MessengerClassic.exe dist/win-unpacked/MessengerClassic.exe -Force
+
+      - name: Build the installer from the app folder
+        run: npx electron-builder --win nsis --prepackaged dist/win-unpacked --publish never
+
+      - name: Find the installer
+        id: installer
+        run: |
+          $version = node -p "require('./package.json').version"
+          "name=MessengerClassic-Setup-$version.exe" >> $env:GITHUB_OUTPUT
+
+      - name: Upload the installer for signing
+        if: env.SIGNING == 'true'
+        id: upload-installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-unsigned
+          path: dist/${{ steps.installer.outputs.name }}
+
+      - name: Sign the installer (approve it on signpath.io)
+        if: env.SIGNING == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG || 'messenger-classic' }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY || 'release-signing' }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.upload-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-installer
+
+      - name: Put the signed installer back
+        if: env.SIGNING == 'true'
+        run: Copy-Item "signed-installer/${{ steps.installer.outputs.name }}" "dist/${{ steps.installer.outputs.name }}" -Force
+
+      - name: Rebuild the blockmap and latest.yml for the final installer
+        run: node scripts/finish-installer.js "dist/${{ steps.installer.outputs.name }}"
+
+      - name: Show the signatures
+        run: |
+          foreach ($f in 'dist/win-unpacked/MessengerClassic.exe', "dist/${{ steps.installer.outputs.name }}") {
+            $s = Get-AuthenticodeSignature $f
+            "{0}: {1} {2}" -f $f, $s.Status, $s.SignerCertificate.Subject
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MessengerClassic-windows
+          path: |
+            dist/${{ steps.installer.outputs.name }}
+            dist/${{ steps.installer.outputs.name }}.blockmap
+            dist/latest.yml
+
+      - name: Attach to the release
+        if: ${{ inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.release_tag }}" "dist/${{ steps.installer.outputs.name }}" "dist/${{ steps.installer.outputs.name }}.blockmap" dist/latest.yml --clobber

@@ -59,6 +59,8 @@ function page(path, query, uid = '1000') {
 <head>
 <meta charset="utf-8">
 <title>${user.unread + user.notifs ? `(${user.unread + user.notifs}) ` : ''}Messenger | Facebook</title>
+<!-- Like Facebook: the tab icon switches to the badged one while chats are unread. -->
+<link rel="shortcut icon" href="${user.unread ? '/favicon-badged.ico' : '/favicon.ico'}" data-default-icon="/favicon.ico" data-badged-icon="/favicon-badged.ico">
 <style>
   /* Variable names and scoping copied from facebook.com/messages. */
   :root, .__fb-light-mode:root, .__fb-light-mode { --surface-background:#fff; --messenger-card-background:#fff; --web-wash:#f0f2f5; --primary-text:#080809; --secondary-text:#65686c;
@@ -159,6 +161,8 @@ function page(path, query, uid = '1000') {
   function setTitle() {
     const n = counts.unread + counts.notifs;
     document.title = (n ? '(' + n + ') ' : '') + 'Messenger | Facebook';
+    const icon = document.querySelector('link[rel*=icon]');
+    icon.href = counts.unread ? icon.dataset.badgedIcon : icon.dataset.defaultIcon;
   }
   // Facebook's button labels: "Messenger" / "Messenger, 2 unread".
   function setJewel(id, name, n) {
@@ -236,6 +240,10 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'content-type': 'image/svg+xml', 'cache-control': 'no-store' });
     const who = USERS[url.searchParams.get('u')] || USERS[1000];
     return res.end(face(url.pathname.startsWith('/avatar/me') ? who.color : '#3b82f6'));
+  }
+  if (url.pathname.endsWith('.ico')) {
+    res.writeHead(204);
+    return res.end();
   }
   if (url.pathname === '/' || url.pathname === '/home.php') {
     res.writeHead(200, { 'content-type': 'text/html' });

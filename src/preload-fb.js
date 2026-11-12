@@ -180,6 +180,9 @@ try {
 // - on /messages it has none, so the count on the other top-bar buttons
 //   (Notifications) is taken off the title count.
 // Between counts, the title blinks "Anna messaged you", which is skipped.
+// Facebook also swaps the tab icon for a badged one exactly when there are
+// unread chats (data-badged-icon on the icon link), which settles the
+// yes-or-no: no badged icon, no unread chats, whatever the title says.
 // ---------------------------------------------------------------------------
 const MESSENGER_BUTTON = /\bMessenger\b|^Messaging\b/;
 const BRAND = /Messenger|Facebook/;
@@ -220,6 +223,26 @@ function readTitleTotal() {
   return titleTotal;
 }
 
+// 'badged' while Facebook shows unread chats in its tab icon, 'plain' when
+// not, null when this page doesn't use those icons.
+function faviconState() {
+  const link = document.querySelector('link[rel*="icon"][href*=".ico"]');
+  if (!link) return null;
+  const { badgedIcon, defaultIcon } = link.dataset;
+  if (!badgedIcon || !defaultIcon) return null;
+  const href = link.href;
+  const same = (a) => {
+    try {
+      return new URL(a, location.href).href === href;
+    } catch {
+      return false;
+    }
+  };
+  if (same(badgedIcon)) return 'badged';
+  if (same(defaultIcon)) return 'plain';
+  return null;
+}
+
 function messengerUnread() {
   const total = readTitleTotal();
   const banner = document.querySelector('div[role="banner"]');
@@ -231,14 +254,17 @@ function messengerUnread() {
     const label = /\d+/.exec(messenger.getAttribute('aria-label'));
     return label ? Number(label[0]) : badgeCount(messenger);
   }
-  if (total === null) return null;
+  const icon = faviconState();
+  if (icon === 'plain') return 0;
+  if (total === null) return icon === 'badged' ? 1 : null;
   // The bar's buttons (Menu, Notifications, Account); the links in the
   // middle (Home, Marketplace...) have counts the title doesn't include.
   let notifications = 0;
   for (const el of buttons) {
     if (el.matches('[role="button"]')) notifications = Math.max(notifications, badgeCount(el));
   }
-  return Math.max(0, total - notifications);
+  const chats = Math.max(0, total - notifications);
+  return icon === 'badged' ? Math.max(1, chats) : chats;
 }
 
 // The bar is drawn a moment after the page; only give up on it (and let the
@@ -591,7 +617,7 @@ window.addEventListener('DOMContentLoaded', () => {
   new MutationObserver(() => {
     if (unreadTimer) return;
     unreadTimer = setTimeout(() => { unreadTimer = null; reportUnread(); }, 50);
-  }).observe(document.head, { subtree: true, childList: true, characterData: true });
+  }).observe(document.head, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['href'] });
   new MutationObserver(queueToastCheck).observe(document.body, { subtree: true, childList: true });
   window.addEventListener('resize', scheduleReport);
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => setTimeout(scheduleReport, 300));

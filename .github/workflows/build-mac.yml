@@ -1,0 +1,75 @@
+# Builds the Mac app (Apple Silicon) on GitHub's macOS machines, tests it
+# against the mock page, and keeps the files as a workflow artifact. Give a
+# release tag to also attach them to that release, so Macs can download it.
+name: Build Mac app
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Attach the Mac files to this existing release (for example v1.4.0). Leave empty to only build.
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build (Apple Silicon, ad-hoc signed)
+        run: npm run dist:mac
+
+      - name: Show the signature
+        run: |
+          codesign -dv --verbose=2 "dist/mac-arm64/Messenger Classic.app" 2>&1 | head -20
+          codesign --verify --deep --strict "dist/mac-arm64/Messenger Classic.app" && echo "signature OK"
+          ls -la dist
+
+      - name: Smoke test against the mock page
+        run: |
+          npm install --no-save playwright-core@1.49.1
+          SETTINGS="$HOME/Library/Application Support/Messenger Classic"
+          mkdir -p "$SETTINGS"
+          echo '{ "autoCheckUpdates": false, "bounds": { "x": 0, "y": 0, "width": 1280, "height": 800 } }' > "$SETTINGS/settings.json"
+          node test/mock-server.js > mock.log 2>&1 &
+          MESSENGER_URL=http://localhost:8123/messages/t/1/ MC_DEBUG=1 \
+            "dist/mac-arm64/Messenger Classic.app/Contents/MacOS/Messenger Classic" --remote-debugging-port=9222 > app.log 2>&1 &
+          sleep 15
+          mkdir -p smoke
+          screencapture -x smoke/screen.png || true
+          node test/smoke.js smoke
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test
+          path: |
+            smoke/
+            app.log
+            mock.log
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MessengerClassic-mac-arm64
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
+            dist/latest-mac.yml
+
+      - name: Attach to the release
+        if: ${{ inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.release_tag }}" dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-mac.yml --clobber

@@ -2,14 +2,17 @@
 # is set up (secret SIGNPATH_API_TOKEN, variable SIGNPATH_ORGANIZATION_ID),
 # the app's .exe and then the installer are sent to SignPath for signing;
 # each request waits until it is approved on signpath.io. Without them the
-# installer is built unsigned. Give a release tag to attach the files to it.
+# installer is built unsigned. A pushed version tag creates a signed release.
 name: Build Windows app
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Attach the Windows files to this existing release (for example v1.3.1). Leave empty to only build.
+        description: Create or update this release (for example v1.4.0). Leave empty to only build.
         required: false
         default: ''
 
@@ -24,6 +27,7 @@ jobs:
       SIGNING: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' && 'true' || 'false' }}
       SIGNPATH_TOKEN_CONFIGURED: ${{ secrets.SIGNPATH_API_TOKEN != '' && 'true' || 'false' }}
       SIGNPATH_ORGANIZATION_CONFIGURED: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' && 'true' || 'false' }}
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
     defaults:
       run:
         shell: pwsh
@@ -36,14 +40,19 @@ jobs:
           cache: npm
 
       - name: Require signing for release builds
-        env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           if ($env:SIGNPATH_TOKEN_CONFIGURED -ne $env:SIGNPATH_ORGANIZATION_CONFIGURED) {
             throw 'SignPath is only partly configured. Set both SIGNPATH_API_TOKEN and SIGNPATH_ORGANIZATION_ID.'
           }
           if (-not [string]::IsNullOrWhiteSpace($env:RELEASE_TAG) -and $env:SIGNING -ne 'true') {
             throw 'Release builds must be signed. Configure SignPath before setting release_tag.'
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:RELEASE_TAG)) {
+            $version = node -p "require('./package.json').version"
+            $expectedTag = "v$version"
+            if ($env:RELEASE_TAG -ne $expectedTag) {
+              throw "Release tag $env:RELEASE_TAG does not match package version $expectedTag."
+            }
           }
 
       - run: npm ci
@@ -133,8 +142,18 @@ jobs:
             dist/${{ steps.installer.outputs.name }}.blockmap
             dist/latest.yml
 
-      - name: Attach to the release
-        if: ${{ inputs.release_tag != '' }}
+      - name: Create the release if necessary
+        if: env.RELEASE_TAG != ''
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ inputs.release_tag }}" "dist/${{ steps.installer.outputs.name }}" "dist/${{ steps.installer.outputs.name }}.blockmap" dist/latest.yml --clobber
+        run: |
+          gh release view "$env:RELEASE_TAG" *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create "$env:RELEASE_TAG" --verify-tag --title "Messenger Classic $env:RELEASE_TAG" --generate-notes
+          }
+
+      - name: Attach to the release
+        if: env.RELEASE_TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$env:RELEASE_TAG" "dist/${{ steps.installer.outputs.name }}" "dist/${{ steps.installer.outputs.name }}.blockmap" dist/latest.yml --clobber

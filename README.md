@@ -185,13 +185,14 @@ MESSENGER_URL=http://localhost:8123/messages/ MC_DEBUG=1 npm start
 ### Publish a release
 
 Windows builds come from the **Build Windows app** workflow
-(`.github/workflows/build-windows.yml`, run it from the Actions tab). It
-builds the app folder, has SignPath sign `MessengerClassic.exe`, builds the
-installer from that folder, has SignPath sign the installer, then rebuilds
-the `.blockmap` and `latest.yml` for the signed installer
-(`scripts/finish-installer.js`). Each signing request waits until an approver
-approves it on signpath.io. Without the SignPath settings below it builds an
-unsigned installer.
+(`.github/workflows/build-windows.yml`, run it from the Actions tab or push a
+version tag such as `v1.4.0`). It builds the app folder, has SignPath sign
+`MessengerClassic.exe`, builds the installer from that folder, has SignPath
+sign the installer, then rebuilds the `.blockmap` and `latest.yml` for the
+signed installer (`scripts/finish-installer.js`). Each signing request waits
+until an approver approves it on signpath.io. A pushed version tag creates the
+GitHub release after signing succeeds. Without the SignPath settings below,
+only an unsigned test artifact can be built.
 
 SignPath settings, in the repo's **Settings → Secrets and variables →
 Actions**:

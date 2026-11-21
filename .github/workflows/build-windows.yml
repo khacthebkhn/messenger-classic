@@ -21,7 +21,9 @@ jobs:
   windows:
     runs-on: windows-latest
     env:
-      SIGNING: ${{ secrets.SIGNPATH_API_TOKEN != '' && 'true' || 'false' }}
+      SIGNING: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' && 'true' || 'false' }}
+      SIGNPATH_TOKEN_CONFIGURED: ${{ secrets.SIGNPATH_API_TOKEN != '' && 'true' || 'false' }}
+      SIGNPATH_ORGANIZATION_CONFIGURED: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' && 'true' || 'false' }}
     defaults:
       run:
         shell: pwsh
@@ -32,6 +34,17 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Require signing for release builds
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          if ($env:SIGNPATH_TOKEN_CONFIGURED -ne $env:SIGNPATH_ORGANIZATION_CONFIGURED) {
+            throw 'SignPath is only partly configured. Set both SIGNPATH_API_TOKEN and SIGNPATH_ORGANIZATION_ID.'
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:RELEASE_TAG) -and $env:SIGNING -ne 'true') {
+            throw 'Release builds must be signed. Configure SignPath before setting release_tag.'
+          }
 
       - run: npm ci
 
@@ -102,16 +115,19 @@ jobs:
       - name: Rebuild the blockmap and latest.yml for the final installer
         run: node scripts/finish-installer.js "dist/${{ steps.installer.outputs.name }}"
 
-      - name: Show the signatures
+      - name: Verify the signatures
         run: |
           foreach ($f in 'dist/win-unpacked/MessengerClassic.exe', "dist/${{ steps.installer.outputs.name }}") {
             $s = Get-AuthenticodeSignature $f
             "{0}: {1} {2}" -f $f, $s.Status, $s.SignerCertificate.Subject
+            if ($env:SIGNING -eq 'true' -and $s.Status -ne 'Valid') {
+              throw "$f does not have a valid Authenticode signature (status: $($s.Status))."
+            }
           }
 
       - uses: actions/upload-artifact@v4
         with:
-          name: MessengerClassic-windows
+          name: ${{ env.SIGNING == 'true' && 'MessengerClassic-windows-signed' || 'MessengerClassic-windows-unsigned' }}
           path: |
             dist/${{ steps.installer.outputs.name }}
             dist/${{ steps.installer.outputs.name }}.blockmap

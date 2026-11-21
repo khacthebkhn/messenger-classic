@@ -25,6 +25,7 @@
     "files": [
       "src/**/*",
       "assets/**/*",
+      "LICENSE",
       "package.json"
     ],
     "directories": {

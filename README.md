@@ -204,7 +204,9 @@ Actions**:
 
 The SignPath project needs two artifact configurations, `app` and
 `installer`, with the contents of `signpath/app.xml` and
-`signpath/installer.xml`.
+`signpath/installer.xml`. A workflow run without those credentials is labeled
+as an unsigned test build. It cannot attach files to a GitHub release; release
+builds must pass Authenticode verification first.
 
 The app finds updates through `latest.yml` on the newest GitHub release, so
 every release needs these three files from `dist/`:
@@ -266,6 +268,12 @@ Team roles:
 - Approvers: [khacthebkhn](https://github.com/khacthebkhn)
 
 Everyone with commit or signing access uses multi-factor authentication.
+
+## License
+
+Messenger Classic is licensed under the [MIT License](LICENSE). You may use,
+copy, modify, merge, publish, distribute, sublicense, and sell copies under
+the terms in that file.
 
 ### Privacy policy
 
